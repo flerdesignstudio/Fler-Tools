@@ -1,8 +1,10 @@
 import chladniTool from './tools/chladni/chladni-ui.js';
+import hydrogenTool from './tools/hydrogen/hydrogen-ui.js';
 
 // --- Tool Registry ---
 export const tools = {
-    [chladniTool.id]: chladniTool
+    [chladniTool.id]: chladniTool,
+    [hydrogenTool.id]: hydrogenTool
     // New tools will be imported and added here
 };
 
