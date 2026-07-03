@@ -515,19 +515,10 @@ input[type="color"] {
     background-position: center center;
 }
 
-/* vignette to frame the canvas area */
-.canvas-container::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(ellipse at center,
-            transparent 55%,
-            rgba(0, 0, 0, 0.55) 100%);
-    pointer-events: none;
-    z-index: 1;
-}
 
-#visualizer {
+
+#visualizer,
+#hydrogen_visualizer {
     display: block;
     max-width: 90%;
     max-height: 90%;
