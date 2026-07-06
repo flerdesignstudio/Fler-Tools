@@ -1,10 +1,12 @@
 import chladniTool from './tools/chladni/chladni-ui.js';
 import hydrogenTool from './tools/hydrogen/hydrogen-ui.js';
+import oscilloscopeTool from './tools/oscilloscope/oscilloscope-ui.js';
 
 // --- Tool Registry ---
 export const tools = {
     [chladniTool.id]: chladniTool,
-    [hydrogenTool.id]: hydrogenTool
+    [hydrogenTool.id]: hydrogenTool,
+    [oscilloscopeTool.id]: oscilloscopeTool
     // New tools will be imported and added here
 };
 

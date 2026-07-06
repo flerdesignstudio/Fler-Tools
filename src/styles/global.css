@@ -518,7 +518,8 @@ input[type="color"] {
 
 
 #visualizer,
-#hydrogen_visualizer {
+#hydrogen_visualizer,
+#oscVisualizer {
     display: block;
     max-width: 90%;
     max-height: 90%;
