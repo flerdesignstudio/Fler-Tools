@@ -128,11 +128,6 @@ export default {
                     <input type="range" id="svgOpt_h" min="1" max="4" step="1" value="3" class="notion-slider">
                     <p class="hint-text" style="font-size:11px; opacity:0.6; margin: 4px 0 0;">1 = Max Detail (Heavy), 4 = Ultra Aggressive (Lightest)</p>
                 </div>
-                <div style="margin-top: 16px; display: flex; flex-direction: column; gap: 8px;">
-                    <button id="fullscreenBtn_h" class="notion-btn notion-btn-secondary">Fullscreen Preview</button>
-                    <button id="downloadSVGBtn_h" class="notion-btn notion-btn-secondary">Export SVG</button>
-                    <button id="downloadBtn_h" class="notion-btn notion-btn-primary">Export PNG</button>
-                </div>
             </section>
         `;
     },
@@ -153,7 +148,10 @@ export default {
         sidebarContainer.innerHTML = this.getSidebarHTML();
         mainContainer.innerHTML = this.getMainHTML();
 
-        animate(".control-group", { opacity: [0, 1], x: [-20, 0] }, { delay: stagger(0.1), duration: 0.5 });
+        // Premium staggered entrance (1/3 rule compliance)
+        animate(".control-group", { opacity: [0, 1], x: [-15, 0] }, { delay: stagger(0.08), duration: 0.4, easing: [0.4, 0, 0.2, 1] });
+        // Canvas entrance (emphasized entrance)
+        animate("#hydrogen_visualizer", { opacity: [0, 1], scale: [0.97, 1] }, { duration: 0.5, easing: [0.05, 0.7, 0.1, 1] });
 
         const canvas = document.getElementById('hydrogen_visualizer');
         this._visualizer = new HydrogenVisualizer(canvas);
@@ -270,39 +268,6 @@ export default {
 
         this._addListener('aspectRatioSelect_h', 'change', (e) => {
             v.setAspectRatio(e.target.value);
-        });
-
-        this._addListener('downloadBtn_h', 'click', () => {
-            const n = nSlider.value;
-            const l = lSlider.value;
-            const m = mSlider.value;
-            v.exportToPNG(`hydrogen-n${n}-l${l}-m${m}.png`);
-        });
-
-        this._addListener('downloadSVGBtn_h', 'click', () => {
-            const svgString = v.exportToSVG();
-            const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            const n = nSlider.value;
-            const l = lSlider.value;
-            const m = mSlider.value;
-            a.download = `hydrogen-n${n}-l${l}-m${m}.svg`;
-            document.body.appendChild(a);
-            a.click();
-            URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-        });
-
-        this._addListener('fullscreenBtn_h', 'click', () => {
-            if (!document.fullscreenElement) {
-                document.documentElement.requestFullscreen().catch(err => {
-                    console.error(`Error attempting to enable fullscreen: ${err.message}`);
-                });
-            } else {
-                document.exitFullscreen();
-            }
         });
 
         // Animations

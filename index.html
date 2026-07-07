@@ -6,63 +6,64 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fler Design Studio Tools</title>
     <link rel="stylesheet" href="src/styles/global.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-    <style>
-        /* Tool Navigation Styles */
-        #app-navigation {
-            display: flex;
-            gap: 8px;
-            padding: 0 16px 16px 16px;
-            flex-wrap: wrap;
-            border-bottom: 1px solid var(--border-subtle);
-            margin-bottom: 4px;
-        }
-        
-        .nav-btn {
-            flex: 1;
-            min-width: 80px;
-            text-align: center;
-        }
-
-        .nav-btn.active {
-            background: var(--text-primary);
-            color: #0d0d0d;
-        }
-
-        .nav-btn .icon {
-            font-size: 14px;
-        }
-
-        #tool-sidebar-container {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            padding: 16px 16px 20px 16px;
-        }
-    </style>
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" as="style"
+        onload="this.onload=null;this.rel='stylesheet'">
+    <noscript>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
+    </noscript>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0"
+        rel="stylesheet" />
 </head>
 
 <body>
-    <div class="app-layout">
-        <aside class="sidebar">
-            <header class="sidebar-header">
-                <h1>FlerTools</h1>
-                <p>Make the best of it</p>
-            </header>
+    <!-- Fullscreen Canvas Container -->
+    <main class="canvas-container" id="tool-main-container">
+        <!-- The background grid will be rendered via CSS on this container or a child -->
+    </main>
 
-            <!-- Global App Navigation Switcher -->
-            <div id="app-navigation"></div>
+    <!-- Floating UI Layer -->
+    <div class="floating-ui-layer">
 
-            <!-- Dynamic Sidebar Injection Container -->
-            <div class="sidebar-content" id="tool-sidebar-container">
+        <!-- Left Panel Group (Branding & Settings) -->
+        <div class="left-panel-group">
+            <!-- Top Left: Branding Frame -->
+            <div class="branding-frame panel">
+                <div class="logo">
+                    <img src="src/Assets/Fler_Logo.svg" alt="Fler Logo"
+                        style="width: 32px; height: 32px; object-fit: contain;">
+                </div>
+                <div class="title-area">
+                    <h1 class="title">Tools</h1>
+                    <div class="desc">
+                        An open source graphic toolkit,<br> make the best of it.
+                    </div>
+                </div>
             </div>
-        </aside>
 
-        <!-- Dynamic Main Canvas Injection Container -->
-        <main class="canvas-container" id="tool-main-container">
-        </main>
+            <!-- Left: Settings Container -->
+            <aside class="settings-frame panel">
+                <div class="sidebar-content" id="tool-sidebar-container">
+                    <!-- Dynamic Sidebar Injection Container -->
+                </div>
+            </aside>
+        </div>
+
+        <!-- Top Center: Navigation Bar -->
+        <div class="nav-bar-frame panel" id="app-navigation">
+            <!-- Dynamic Navigation Buttons Injected Here -->
+        </div>
+
+        <!-- Bottom Right: Export Frame -->
+        <div class="export-frame panel">
+            <button class="notion-btn notion-btn-secondary" id="exportPngBtn">Export PNG</button>
+            <button class="notion-btn notion-btn-secondary" id="exportSvgBtn">Export SVG</button>
+        </div>
+
+        <!-- Top Right: Fullscreen Button -->
+        <button class="fullscreen-btn panel" id="fullscreenBtn" title="Toggle Fullscreen">
+            <span class="material-symbols-outlined">fullscreen</span>
+        </button>
+
     </div>
 
     <script type="module" src="/src/app.js"></script>

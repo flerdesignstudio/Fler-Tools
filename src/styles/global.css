@@ -1,48 +1,54 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
-
 :root {
     /* Base surfaces */
-    --bg-base: #111111;
-    --bg-canvas: #0d0d0d;
-    --bg-sidebar: rgba(22, 22, 22, 0.92);
-    /* slightly more opaque for text legibility */
-    --bg-sidebar-solid: #161616;
-    /* backdrop-filter fallback */
+    --bg-base: #0a0a0a;
+    --bg-canvas: #0a0a0a;
+    --bg-panel: rgba(24, 24, 24, 0.95);
+    --bg-panel-solid: #181818;
 
-    /* Glass layers */
-    --glass-subtle: rgba(255, 255, 255, 0.03);
-    --glass-low: rgba(255, 255, 255, 0.06);
-    --glass-mid: rgba(255, 255, 255, 0.10);
-    --glass-high: rgba(255, 255, 255, 0.14);
-    --glass-hover: rgba(255, 255, 255, 0.08);
+    /* Components */
+    --bg-button: #242424;
+    --bg-button-hover: #333333;
+    --bg-button-active: #f3f3f3;
 
     /* Borders */
-    --border-subtle: rgba(255, 255, 255, 0.07);
-    --border-default: rgba(255, 255, 255, 0.11);
-    --border-strong: rgba(255, 255, 255, 0.20);
+    --border-subtle: #303030;
+    --border-default: #3b3b3b;
+    --border-strong: #4c4c4c;
 
-    /* Text — all values verified ≥4.5:1 contrast on #161616 sidebar */
-    --text-primary: rgba(255, 255, 255, 0.95);
-    /* ~18:1 */
-    --text-secondary: rgba(255, 255, 255, 0.70);
-    /* ~9.5:1 — was 0.50, a WCAG fail */
-    --text-muted: rgba(255, 255, 255, 0.52);
-    /* ~5.2:1 — was 0.28, a hard fail */
-    --text-label: rgba(255, 255, 255, 0.58);
-    /* ~6.2:1 — was 0.38, a hard fail */
+    /* Text */
+    --text-primary: #ffffff;
+    --text-secondary: #bebebe;
+    --text-muted: #9d9d9d;
+    --text-active: #0d0d0d;
 
     /* Accent */
     --accent: #39FF14;
     --accent-dim: rgba(57, 255, 20, 0.18);
-    --accent-glow: rgba(57, 255, 20, 0.08);
 
-    /* Focus ring — consistent, visible on all backgrounds */
-    --focus-ring: 0 0 0 2px #111111, 0 0 0 4px rgba(57, 255, 20, 0.7);
+    /* Glass Tokens */
+    --glass-subtle: rgba(255, 255, 255, 0.03);
+    --glass-low: rgba(255, 255, 255, 0.05);
+    --glass-mid: rgba(255, 255, 255, 0.08);
+    --glass-hover: rgba(255, 255, 255, 0.1);
+    --glass-high: rgba(255, 255, 255, 0.15);
+
+    /* Focus ring */
+    --focus-ring: 0 0 0 2px var(--bg-base), 0 0 0 4px var(--accent);
 
     --font-family: 'Inter', sans-serif;
     --radius-sm: 4px;
-    --radius-md: 6px;
-    --radius-lg: 10px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+
+    /* Motion Tokens */
+    --ease-entrance: cubic-bezier(0.05, 0.7, 0.1, 1);
+    --ease-exit: cubic-bezier(0.3, 0, 1, 1);
+    --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+    --ease-premium: cubic-bezier(0.4, 0, 0.2, 1);
+
+    --dur-fast: 150ms;
+    --dur-base: 250ms;
+    --dur-slow: 400ms;
 }
 
 * {
@@ -67,104 +73,171 @@ body {
     background-color: var(--bg-base);
     color: var(--text-primary);
     overflow: hidden;
-    height: 100vh;
-    width: 100vw;
+    height: 100dvh;
+    margin: 0;
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
 }
 
-/* ── Layout ─────────────────────────────────────── */
-.app-layout {
-    display: flex;
-    height: 100vh;
-    width: 100vw;
+body::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+        linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+    background-size: 60px 60px;
+    background-position: center center;
+    pointer-events: none;
+    z-index: 0;
 }
 
-/* ── Sidebar ─────────────────────────────────────── */
-.sidebar {
-    width: 272px;
-    min-width: 272px;
-    /* Fallback for browsers without backdrop-filter support */
-    background-color: var(--bg-sidebar-solid);
-    background-color: var(--bg-sidebar);
-    backdrop-filter: blur(24px) saturate(1.4);
-    -webkit-backdrop-filter: blur(24px) saturate(1.4);
-    border-right: 1px solid var(--border-default);
-    display: flex;
-    flex-direction: column;
-    overflow-y: auto;
-    position: relative;
+/* ── Layout ─────────────────────────────────────── */
+.floating-ui-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    /* Let clicks pass through to canvas */
     z-index: 10;
 }
 
+.panel {
+    pointer-events: auto;
+    /* Re-enable clicks on panels */
+    background-color: var(--bg-panel);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    position: absolute;
+}
+
 @supports not (backdrop-filter: blur(1px)) {
-    .sidebar {
-        background-color: var(--bg-sidebar-solid);
+    .panel {
+        background-color: var(--bg-panel-solid);
     }
 }
 
-/* subtle inner highlight on left edge */
-.sidebar::before {
-    content: '';
+/* ── Left Panel Group (Branding + Settings) ──────── */
+.left-panel-group {
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 1px;
-    height: 100%;
-    background: linear-gradient(to bottom,
-            transparent,
-            rgba(255, 255, 255, 0.06) 20%,
-            rgba(255, 255, 255, 0.06) 80%,
-            transparent);
-    pointer-events: none;
+    top: 15px;
+    bottom: 15px;
+    left: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 360px;
+    z-index: 10;
 }
 
-.sidebar::-webkit-scrollbar {
+.left-panel-group .panel {
+    position: relative;
+    width: 100%;
+}
+
+.branding-frame {
+    padding: 15px 15px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.title-area {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+}
+
+.branding-frame .title {
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+    color: var(--text-primary);
+    margin: 0;
+    flex-shrink: 0;
+}
+
+.branding-frame .desc {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-muted);
+    line-height: 1.3;
+}
+
+.branding-frame .desc p {
+    margin: 0;
+}
+
+.settings-frame {
+    flex: 1;
+    min-height: 0;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+}
+
+.settings-frame .sidebar-content {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    overflow-y: auto;
+    padding-right: 10px;
+    /* space for scrollbar */
+}
+
+/* Custom scrollbar for settings */
+.settings-frame .sidebar-content::-webkit-scrollbar {
     width: 4px;
     background: transparent;
 }
 
-.sidebar::-webkit-scrollbar-thumb {
+.settings-frame .sidebar-content::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.08);
     border-radius: 2px;
 }
 
-.sidebar::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.14);
+.nav-bar-frame {
+    top: 15px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 6px;
+    padding: 8px;
+    align-items: center;
 }
 
-/* ── Sidebar Header ──────────────────────────────── */
-.sidebar-header {
-    padding: 20px 18px 16px;
-    border-bottom: 1px solid var(--border-subtle);
-    flex-shrink: 0;
-    background: linear-gradient(to bottom,
-            rgba(255, 255, 255, 0.025),
-            transparent);
-}
-
-.sidebar-header h1 {
-    font-size: 13px;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--text-primary);
-}
-
-.sidebar-header p {
-    font-size: 11px;
-    font-weight: 400;
-    color: var(--text-muted);
-    margin-top: 3px;
-    letter-spacing: 0.02em;
-}
-
-/* ── Sidebar Content ─────────────────────────────── */
-.sidebar-content {
-    padding: 20px 16px;
+.export-frame {
+    bottom: 15px;
+    right: 15px;
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 6px;
+    padding: 8px 8px;
+    align-items: center;
+    justify-content: center;
+}
+
+.fullscreen-btn {
+    top: 15px;
+    right: 15px;
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    color: var(--text-primary);
+    transition: background-color var(--dur-fast) var(--ease-standard);
+}
+
+.fullscreen-btn:hover {
+    background-color: var(--bg-button-hover);
+}
+
+/* ── Sidebar Content (Legacy Overrides) ─────────────────────────────── */
+.sidebar-content {
     flex-grow: 1;
 }
 
@@ -176,29 +249,25 @@ body {
 }
 
 .group-title {
-    font-size: 11px;
-    /* was 10px — below comfortable reading threshold */
+    font-size: 12px;
     font-weight: 600;
-    color: var(--text-label);
+    color: var(--text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.08em;
-    padding-bottom: 4px;
+    padding-bottom: 0;
 }
 
 .sub-title {
-    font-size: 11px;
-    /* was 11px, keeping but boosting color */
+    font-size: 12px;
     font-weight: 600;
     color: var(--text-muted);
-    letter-spacing: 0.04em;
     text-transform: uppercase;
-    margin-top: 4px;
+    margin-top: 0;
 }
 
 .separator {
     border: 0;
     height: 1px;
-    background: var(--border-subtle);
+    background: var(--border-default);
     margin: 0;
 }
 
@@ -213,8 +282,7 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
-    font-size: 13px;
-    /* was 12px */
+    font-size: 12px;
     font-weight: 500;
     color: var(--text-secondary);
 }
@@ -233,9 +301,9 @@ body {
 
 .notion-slider {
     -webkit-appearance: none;
+    appearance: none;
     width: 100%;
     height: 5px;
-    /* was 3px — too thin to click accurately */
     background: var(--glass-high);
     border-radius: 3px;
     outline: none;
@@ -247,19 +315,42 @@ body {
     border-radius: 3px;
 }
 
+/* Webkit Thumb */
 .notion-slider::-webkit-slider-thumb {
     -webkit-appearance: none;
+    appearance: none;
     width: 16px;
-    /* was 13px — larger hit target */
     height: 16px;
     border-radius: 50%;
     background: var(--text-primary);
     cursor: pointer;
-    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(0, 0, 0, 0.6);
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    box-shadow: 0 0 0 2px var(--bg-base), 0 2px 6px rgba(0, 0, 0, 0.6);
+    transition: transform var(--dur-fast) var(--ease-standard), box-shadow var(--dur-fast) var(--ease-standard);
 }
 
 .notion-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+    box-shadow: 0 0 0 3px var(--accent-dim), 0 2px 8px rgba(0, 0, 0, 0.6);
+}
+
+/* Firefox Track & Thumb */
+.notion-slider::-moz-range-track {
+    width: 100%;
+    height: 5px;
+    background: var(--glass-high);
+    border-radius: 3px;
+}
+.notion-slider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border: none;
+    border-radius: 50%;
+    background: var(--text-primary);
+    cursor: pointer;
+    box-shadow: 0 0 0 2px var(--bg-base), 0 2px 6px rgba(0, 0, 0, 0.6);
+    transition: transform var(--dur-fast) var(--ease-standard), box-shadow var(--dur-fast) var(--ease-standard);
+}
+.notion-slider::-moz-range-thumb:hover {
     transform: scale(1.2);
     box-shadow: 0 0 0 3px var(--accent-dim), 0 2px 8px rgba(0, 0, 0, 0.6);
 }
@@ -277,7 +368,7 @@ body {
     padding: 6px 8px;
     /* slightly taller for touch target */
     border-radius: var(--radius-sm);
-    transition: background 0.12s;
+    transition: background var(--dur-fast) var(--ease-standard);
     min-height: 36px;
     /* ensures adequate touch target height */
 }
@@ -296,7 +387,7 @@ body {
     display: grid;
     place-content: center;
     cursor: pointer;
-    transition: all 0.12s;
+    transition: all var(--dur-fast) var(--ease-standard);
     flex-shrink: 0;
     background: var(--glass-subtle);
 }
@@ -311,7 +402,7 @@ body {
     width: 8px;
     height: 8px;
     transform: scale(0);
-    transition: 120ms transform ease-in-out;
+    transition: transform var(--dur-fast) var(--ease-entrance);
     background-color: var(--bg-base);
     clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
 }
@@ -348,7 +439,7 @@ body {
     outline: none;
     cursor: pointer;
     appearance: none;
-    transition: border-color 0.12s, background 0.12s;
+    transition: border-color var(--dur-fast) var(--ease-standard), background var(--dur-fast) var(--ease-standard);
     min-height: 36px;
 }
 
@@ -382,24 +473,15 @@ body {
 
 .color-wrapper {
     width: 36px;
-    /* was 28px — below 44px min target, at least bumped up */
     height: 36px;
     border-radius: var(--radius-sm);
     overflow: hidden;
     border: 1px solid var(--border-default);
     cursor: pointer;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-    transition: border-color 0.12s, transform 0.12s;
+    transition: border-color var(--dur-fast) var(--ease-standard), transform var(--dur-fast) var(--ease-standard);
     position: relative;
 }
-
-/* Extend clickable area to meet 44px min without visual change 
-.color-wrapper::after {
-    content: '';
-    position: absolute;
-    inset: -4px;
-}
-*/
 
 .color-wrapper:hover {
     border-color: var(--border-strong);
@@ -414,10 +496,10 @@ body {
 input[type="color"] {
     appearance: none;
     border: none;
-    width: 44px;
-    height: 44px;
+    width: 100%;
+    height: 100%;
     padding: 0;
-    margin: -4px;
+    margin: 0;
     cursor: pointer;
     background: none;
 }
@@ -427,40 +509,44 @@ input[type="color"] {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 7px;
-    width: 100%;
-    padding: 9px 12px;
-    /* was 7px — bumped for touch target */
-    min-height: 36px;
-    /* WCAG recommends ≥44px for touch; ≥36px for pointer */
-    border-radius: var(--radius-sm);
+    gap: 6px;
+    padding: 8px 16px;
+    min-height: 32px;
+    border-radius: var(--radius-md);
     font-family: inherit;
     font-size: 13px;
-    /* was 12px */
     font-weight: 500;
     cursor: pointer;
-    transition: background 0.12s, border-color 0.12s, transform 0.1s;
+    transition: background-color var(--dur-fast) var(--ease-standard), border-color var(--dur-fast) var(--ease-standard), color var(--dur-fast) var(--ease-standard);
     outline: none;
-    letter-spacing: 0.01em;
+    background: var(--bg-button);
+    border: 1px solid var(--border-default);
+    color: var(--text-secondary);
+}
+
+.notion-btn .material-symbols-outlined {
+    font-size: 16px;
 }
 
 .notion-btn:focus-visible {
     box-shadow: var(--focus-ring);
 }
 
-/* Button press handled by Motion.dev spring in script.js */
-
-.notion-btn-secondary {
-    background: var(--glass-low);
-    color: var(--text-secondary);
-    border: 1px solid var(--border-default);
-    backdrop-filter: blur(8px);
+.notion-btn:hover {
+    background: var(--bg-button-hover);
+    color: var(--text-primary);
 }
 
-.notion-btn-secondary:hover {
-    background: var(--glass-mid);
-    color: var(--text-primary);
-    border-color: var(--border-strong);
+.notion-btn.active {
+    background: var(--bg-button-active);
+    color: var(--text-active);
+    font-weight: 600;
+    border-color: transparent;
+}
+
+/* Legacy secondary and primary overrides */
+.notion-btn-secondary {
+    /* uses standard notion-btn styles */
 }
 
 .notion-btn-primary {
@@ -500,19 +586,18 @@ input[type="color"] {
 
 /* ── Canvas Area ─────────────────────────────────── */
 .canvas-container {
-    flex-grow: 1;
-    height: 100%;
-    position: relative;
-    overflow: hidden;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 390px;
+    /* left panel (360px) + margin (15px) + gap (15px) */
+    width: calc(100vw - 390px);
+    z-index: 0;
     display: flex;
     justify-content: center;
     align-items: center;
-    background-color: var(--bg-canvas);
-    background-image:
-        linear-gradient(rgba(255, 255, 255, 0.024) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255, 255, 255, 0.024) 1px, transparent 1px);
-    background-size: 32px 32px;
-    background-position: center center;
+    background-color: transparent;
+    overflow: hidden;
 }
 
 
@@ -530,5 +615,5 @@ input[type="color"] {
         0 24px 80px rgba(0, 0, 0, 0.7),
         0 0 60px rgba(0, 0, 0, 0.4);
     border-radius: 2px;
-    transition: width 0.3s, height 0.3s;
+    transition: width var(--dur-slow) var(--ease-premium), height var(--dur-slow) var(--ease-premium);
 }

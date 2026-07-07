@@ -65,11 +65,7 @@ export default {
                 
                 <div style="display: flex; gap: 8px; margin-top: 12px;">
                     <button id="oscPlayBtn" class="notion-btn notion-btn-secondary" style="flex: 1;">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="6" y="4" width="4" height="16"></rect>
-                            <rect x="14" y="4" width="4" height="16"></rect>
-                        </svg>
+                        <span class="material-symbols-outlined" style="font-size: 18px;">pause</span>
                         <span id="oscPlayBtnText">Pause</span>
                     </button>
                 </div>
@@ -137,8 +133,6 @@ export default {
                     <input type="range" id="oscParticleSize" min="0.5" max="10" step="0.5" value="1.5" class="notion-slider">
                 </div>
                 <div style="margin-top: 16px; display: flex; flex-direction: column; gap: 8px;">
-                    <button id="oscFullscreenBtn" class="notion-btn notion-btn-secondary">Fullscreen Preview</button>
-                    <button id="oscDownloadBtn" class="notion-btn notion-btn-primary">Export SVG</button>
                 </div>
             </section>
         `;
@@ -161,8 +155,10 @@ export default {
         sidebarContainer.innerHTML = this.getSidebarHTML();
         mainContainer.innerHTML = this.getMainHTML();
 
-        // Ensure app animations run
-        animate(".control-group", { opacity: [0, 1], x: [-20, 0] }, { delay: stagger(0.1), duration: 0.5 });
+        // Premium staggered entrance (1/3 rule compliance)
+        animate(".control-group", { opacity: [0, 1], x: [-15, 0] }, { delay: stagger(0.08), duration: 0.4, easing: [0.4, 0, 0.2, 1] });
+        // Canvas entrance (emphasized entrance)
+        animate("#oscVisualizer", { opacity: [0, 1], scale: [0.97, 1] }, { duration: 0.5, easing: [0.05, 0.7, 0.1, 1] });
 
         // Initialize Logic
         const canvas = document.getElementById('oscVisualizer');
@@ -207,33 +203,12 @@ export default {
         this._addListener('oscPlayBtn', 'click', () => {
             v.togglePlay();
             document.getElementById('oscPlayBtnText').textContent = v.isPlaying ? 'Pause' : 'Play';
+            const iconSpan = document.getElementById('oscPlayBtn').querySelector('.material-symbols-outlined');
+            if (iconSpan) iconSpan.textContent = v.isPlaying ? 'pause' : 'play_arrow';
         });
 
         this._addListener('oscAspectRatioSelect', 'change', (e) => {
             v.setAspectRatio(e.target.value);
-        });
-
-        this._addListener('oscDownloadBtn', 'click', () => {
-            const svgString = v.exportToSVG();
-            const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `lissajous-pattern.svg`;
-            document.body.appendChild(a);
-            a.click();
-            URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-        });
-
-        this._addListener('oscFullscreenBtn', 'click', () => {
-             if (!document.fullscreenElement) {
-                 document.documentElement.requestFullscreen().catch(err => {
-                     console.error(`Error attempting to enable fullscreen: ${err.message}`);
-                 });
-             } else {
-                 document.exitFullscreen();
-             }
         });
 
         // Setup theme events

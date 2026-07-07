@@ -33,22 +33,11 @@ export default {
                 </label>
                 <div style="display: flex; gap: 8px;">
                     <button id="togglePlayBtn" class="notion-btn notion-btn-secondary" style="flex: 1;">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="6" y="4" width="4" height="16"></rect>
-                            <rect x="14" y="4" width="4" height="16"></rect>
-                        </svg>
+                        <span class="material-symbols-outlined" style="font-size: 18px;">pause</span>
                         <span id="playBtnText">Pause</span>
                     </button>
                     <button id="randomizeBtn" class="notion-btn notion-btn-secondary" style="flex: 1;">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="16 3 21 3 21 8"></polyline>
-                            <line x1="4" y1="20" x2="21" y2="3"></line>
-                            <polyline points="21 16 21 21 16 21"></polyline>
-                            <line x1="15" y1="15" x2="21" y2="21"></line>
-                            <line x1="4" y1="4" x2="9" y2="9"></line>
-                        </svg>
+                        <span class="material-symbols-outlined" style="font-size: 18px;">shuffle</span>
                         Random
                     </button>
                 </div>
@@ -130,8 +119,6 @@ export default {
                     <input type="range" id="particleSize" min="0.5" max="10" step="0.5" value="1.5" class="notion-slider">
                 </div>
                 <div style="margin-top: 16px; display: flex; flex-direction: column; gap: 8px;">
-                    <button id="fullscreenBtn" class="notion-btn notion-btn-secondary">Fullscreen Preview</button>
-                    <button id="downloadBtn" class="notion-btn notion-btn-primary">Export SVG</button>
                 </div>
             </section>
         `;
@@ -154,8 +141,10 @@ export default {
         sidebarContainer.innerHTML = this.getSidebarHTML();
         mainContainer.innerHTML = this.getMainHTML();
 
-        // Ensure app animations run
-        animate(".control-group", { opacity: [0, 1], x: [-20, 0] }, { delay: stagger(0.1), duration: 0.5 });
+        // Premium staggered entrance (1/3 rule compliance)
+        animate(".control-group", { opacity: [0, 1], x: [-15, 0] }, { delay: stagger(0.08), duration: 0.4, easing: [0.4, 0, 0.2, 1] });
+        // Canvas entrance (emphasized entrance)
+        animate("#visualizer", { opacity: [0, 1], scale: [0.97, 1] }, { duration: 0.5, easing: [0.05, 0.7, 0.1, 1] });
 
         // Initialize Logic
         const canvas = document.getElementById('visualizer');
@@ -203,6 +192,8 @@ export default {
             if (!v.isPlaying) {
                 v.isPlaying = true;
                 document.getElementById('playBtnText').textContent = 'Pause';
+                const iconSpan = document.getElementById('togglePlayBtn').querySelector('.material-symbols-outlined');
+                if (iconSpan) iconSpan.textContent = 'pause';
                 v.animate();
             }
         });
@@ -210,33 +201,12 @@ export default {
         this._addListener('togglePlayBtn', 'click', () => {
             v.togglePlay();
             document.getElementById('playBtnText').textContent = v.isPlaying ? 'Pause' : 'Play';
+            const iconSpan = document.getElementById('togglePlayBtn').querySelector('.material-symbols-outlined');
+            if (iconSpan) iconSpan.textContent = v.isPlaying ? 'pause' : 'play_arrow';
         });
 
         this._addListener('aspectRatioSelect', 'change', (e) => {
             v.setAspectRatio(e.target.value);
-        });
-
-        this._addListener('downloadBtn', 'click', () => {
-            const svgString = v.exportToSVG();
-            const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `chladni-pattern-N${nSlider.value}-M${mSlider.value}.svg`;
-            document.body.appendChild(a);
-            a.click();
-            URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-        });
-
-        this._addListener('fullscreenBtn', 'click', () => {
-             if (!document.fullscreenElement) {
-                 document.documentElement.requestFullscreen().catch(err => {
-                     console.error(`Error attempting to enable fullscreen: ${err.message}`);
-                 });
-             } else {
-                 document.exitFullscreen();
-             }
         });
 
         // Setup theme events
