@@ -218,6 +218,11 @@ export default {
             warm: { color1: '#FF9900', color2: '#FF3300', trail: '#110500', useGradient: true }
         };
 
+        const updateDisabledStates = () => {
+            const useGrad = document.getElementById('oscUseGradient').checked;
+            document.getElementById('oscColor2').closest('.color-item').classList.toggle('disabled', !useGrad);
+        };
+
         const updateVisualizerColors = () => {
             v.updateConfig({
                 particleColor1: document.getElementById('oscColor1').value,
@@ -225,7 +230,11 @@ export default {
                 trailColor: document.getElementById('oscBgTrail').value,
                 useGradient: document.getElementById('oscUseGradient').checked
             });
+            updateDisabledStates();
         };
+
+        // Initial setup
+        updateDisabledStates();
 
         this._addListener('oscThemeSelect', 'change', (e) => {
             const t = themes[e.target.value];

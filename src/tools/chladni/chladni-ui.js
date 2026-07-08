@@ -73,16 +73,16 @@ export default {
                 <h3 class="sub-title">Background</h3>
                 <div class="color-grid">
                     <div class="color-item">
+                        <label for="bgTrail">Solid</label>
+                        <div class="color-wrapper"><input type="color" id="bgTrail" value="#000a00"></div>
+                    </div>
+                    <div class="color-item">
                         <label for="bgGradStart">Start</label>
                         <div class="color-wrapper"><input type="color" id="bgGradStart" value="#000000"></div>
                     </div>
                     <div class="color-item">
                         <label for="bgGradEnd">End</label>
                         <div class="color-wrapper"><input type="color" id="bgGradEnd" value="#1a1a2e"></div>
-                    </div>
-                    <div class="color-item">
-                        <label for="bgTrail">Solid Mode</label>
-                        <div class="color-wrapper"><input type="color" id="bgTrail" value="#000a00"></div>
                     </div>
                 </div>
                 <label class="toggle-row">
@@ -217,6 +217,16 @@ export default {
             forest: { color1: '#228B22', color2: '#ADFF2F', trail: '#051a05', useGradient: true, bgGradStart: '#051005', bgGradEnd: '#102e10', useBgGradient: true }
         };
 
+        const updateDisabledStates = () => {
+            const useGrad = document.getElementById('useGradient').checked;
+            const useBgGrad = document.getElementById('useBgGradient').checked;
+            
+            document.getElementById('color2').closest('.color-item').classList.toggle('disabled', !useGrad);
+            document.getElementById('bgGradStart').closest('.color-item').classList.toggle('disabled', !useBgGrad);
+            document.getElementById('bgGradEnd').closest('.color-item').classList.toggle('disabled', !useBgGrad);
+            document.getElementById('bgTrail').closest('.color-item').classList.toggle('disabled', useBgGrad);
+        };
+
         const updateVisualizerConfig = () => {
             v.updateConfig({
                 particleColor1: document.getElementById('color1').value,
@@ -227,7 +237,11 @@ export default {
                 bgGradEnd: document.getElementById('bgGradEnd').value,
                 useBgGradient: document.getElementById('useBgGradient').checked
             });
+            updateDisabledStates();
         };
+
+        // Initial setup of disabled states
+        updateDisabledStates();
 
         this._addListener('themeSelect', 'change', (e) => {
             const t = themes[e.target.value];
