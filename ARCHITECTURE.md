@@ -1,74 +1,74 @@
-# Architettura della Web App "Graphic-Tools"
+# "Graphic-Tools" Web App Architecture
 
-Questo documento descrive in dettaglio l'architettura, le tecnologie e la struttura della web app **Graphic-Tools** (creata da Fler Design Studio).
+This document describes in detail the architecture, technologies, and structure of the **Graphic-Tools** web app (created by Fler Design Studio).
 
-## 1. Stack Tecnologico
+## 1. Tech Stack
 
-L'applicazione è costruita con un approccio moderno ma leggero, senza l'uso di framework complessi come React o Vue, preferendo Vanilla JS e standard web nativi.
+The application is built with a modern but lightweight approach, without the use of complex frameworks like React or Vue, preferring Vanilla JS and native web standards.
 
-*   **Vite**: Utilizzato come bundler e server di sviluppo locale. Vite offre un avvio rapidissimo e un Hot Module Replacement (HMR) istantaneo. Compila i moduli ES nativi e gestisce gli asset (CSS, immagini, ecc.) in modo efficiente per la produzione.
-*   **Vanilla JavaScript (ES Modules)**: La logica dell'applicazione e dei singoli tool è scritta in JavaScript puro, sfruttando i moduli ECMAScript per l'incapsulamento e l'organizzazione del codice.
-*   **CSS (Vanilla)**: Lo styling è gestito tramite un file CSS globale (`src/styles/global.css`), che include variabili CSS per il theming, layout flessibili (Flexbox/Grid) e stili per l'interfaccia utente in stile "vetro" (Glassmorphism/Floating Panels).
-*   **Motion**: Utilizzata per le animazioni fluide di transizione tra un tool e l'altro (es. fade-in, fade-out dei pannelli). È la versione leggera in Vanilla JS della famosa libreria Framer Motion.
-*   **HTML5 Canvas & SVG**: Il core visivo dei tool utilizza l'elemento `<canvas>` per il rendering ad alte prestazioni di grafiche generative (come le figure di Chladni o le forme d'onda), con supporto anche per l'esportazione vettoriale in SVG.
+*   **Vite**: Used as a bundler and local development server. Vite offers lightning-fast startup and instant Hot Module Replacement (HMR). It compiles native ES modules and handles assets (CSS, images, etc.) efficiently for production.
+*   **Vanilla JavaScript (ES Modules)**: The logic of the application and the individual tools is written in pure JavaScript, leveraging ECMAScript modules for encapsulation and code organization.
+*   **CSS (Vanilla)**: Styling is managed through a global CSS file (`src/styles/global.css`), which includes CSS variables for theming, flexible layouts (Flexbox/Grid), and styles for the "glass" style user interface (Glassmorphism/Floating Panels).
+*   **Motion**: Used for smooth transition animations between one tool and another (e.g., fade-in, fade-out of panels). It is the lightweight Vanilla JS version of the famous Framer Motion library.
+*   **HTML5 Canvas & SVG**: The visual core of the tools uses the `<canvas>` element for high-performance rendering of generative graphics (such as Chladni figures or waveforms), with support also for vector export in SVG.
 
-## 2. Struttura del Layout (UI)
+## 2. Layout Structure (UI)
 
-L'interfaccia utente è definita in `index.html` e segue un pattern a "livelli" (layers):
+The user interface is defined in `index.html` and follows a "layers" pattern:
 
-1.  **Canvas Container (`#tool-main-container`)**: Un contenitore a tutto schermo (livello inferiore) in cui i vari tool iniettano e renderizzano i propri elementi grafici (es. il canvas).
-2.  **Floating UI Layer (`.floating-ui-layer`)**: Un livello superiore in sovraimpressione che contiene i pannelli fluttuanti dell'interfaccia. Questi pannelli includono:
-    *   **Branding & Info**: In alto a sinistra (logo, titolo della suite).
-    *   **Settings Panel (`#tool-sidebar-container`)**: La sidebar a sinistra dove ogni tool inietta dinamicamente i propri controlli (slider, pulsanti, input).
-    *   **Navigation Bar (`#app-navigation`)**: Al centro in alto. Contiene i pulsanti per passare da un tool all'altro (generati dinamicamente).
-    *   **Export Controls**: In basso a destra, pulsanti per esportare il lavoro in PNG o SVG.
-    *   **Fullscreen Toggle**: In alto a destra.
+1.  **Canvas Container (`#tool-main-container`)**: A fullscreen container (bottom layer) where the various tools inject and render their graphical elements (e.g., the canvas).
+2.  **Floating UI Layer (`.floating-ui-layer`)**: An overlay top layer that contains the floating panels of the interface. These panels include:
+    *   **Branding & Info**: Top left (logo, suite title).
+    *   **Settings Panel (`#tool-sidebar-container`)**: The left sidebar where each tool dynamically injects its own controls (sliders, buttons, inputs).
+    *   **Navigation Bar (`#app-navigation`)**: Top center. Contains buttons to switch from one tool to another (dynamically generated).
+    *   **Export Controls**: Bottom right, buttons to export work to PNG or SVG.
+    *   **Fullscreen Toggle**: Top right.
 
-## 3. Architettura a "Tool" (Componenti Modulari)
+## 3. "Tool" Architecture (Modular Components)
 
-Il cuore dell'architettura è il suo sistema di registrazione e caricamento dei **Tool** (strumenti grafici). L'app è progettata per essere facilmente espandibile.
+The heart of the architecture is its registration and loading system for **Tools** (graphic instruments). The app is designed to be easily expandable.
 
-### Il Registry Centrale (`src/app.js`)
-`app.js` funge da orchestratore. Le sue responsabilità principali sono:
-*   **Tool Registry**: Importa i vari tool (Chladni, Hydrogen, Oscilloscope) e li mappa in un oggetto (il registry).
-*   **Lifecycle Management**: Gestisce il caricamento del tool richiesto tramite la funzione `loadTool()`.
-    *   Chiama il metodo `destroy()` del tool corrente per ripulire eventi e DOM.
-    *   Anima l'uscita dei pannelli vecchi e l'entrata di quelli nuovi usando `motion`.
-    *   Chiama il metodo `init(sidebarContainer, mainContainer)` del nuovo tool affinché generi la sua interfaccia e il suo canvas.
-*   **Gestione Globale**: Gestisce funzionalità trasversali come la modalità Fullscreen e il routing degli eventi di esportazione (PNG/SVG) verso i metodi specifici del tool attivo (`_visualizer.exportToPNG`, `_visualizer.exportToSVG`).
+### The Central Registry (`src/app.js`)
+`app.js` acts as an orchestrator. Its main responsibilities are:
+*   **Tool Registry**: Imports the various tools (Chladni, Hydrogen, Oscilloscope) and maps them into an object (the registry).
+*   **Lifecycle Management**: Handles loading the requested tool via the `loadTool()` function.
+    *   Calls the `destroy()` method of the current tool to clean up events and DOM.
+    *   Animates the exit of old panels and the entry of new ones using `motion`.
+    *   Calls the `init(sidebarContainer, mainContainer)` method of the new tool to generate its interface and graphical canvas.
+*   **Global Management**: Manages cross-cutting features like Fullscreen mode and routing export events (PNG/SVG) to the specific methods of the active tool (`_visualizer.exportToPNG`, `_visualizer.exportToSVG`).
 
-### La struttura di un Tool (`src/tools/<nome-tool>/`)
-Ogni tool risiede in una propria cartella indipendente e deve esporre un'interfaccia standard che l'orchestratore (`app.js`) può chiamare. Generalmente un tool esporta:
-*   `id`: Identificativo univoco del tool.
-*   `label`: Il nome leggibile mostrato nella barra di navigazione.
-*   `icon`: L'icona del tool (es. un simbolo Material Design).
-*   `init(sidebarContainer, mainContainer)`: Il metodo chiamato quando il tool viene selezionato. Qui il tool inietta il suo HTML nella sidebar per i controlli e nel main container per il canvas grafico. Imposta inoltre i listener per gli eventi.
-*   `destroy()`: Il metodo chiamato quando l'utente cambia tool. Serve a fermare le animazioni (es. `requestAnimationFrame`), rimuovere i listener e pulire il DOM.
+### The Structure of a Tool (`src/tools/<tool-name>/`)
+Each tool resides in its own independent folder and must expose a standard interface that the orchestrator (`app.js`) can call. Generally, a tool exports:
+*   `id`: Unique identifier of the tool.
+*   `label`: The readable name shown in the navigation bar.
+*   `icon`: The icon of the tool (e.g., a Material Design symbol).
+*   `init(sidebarContainer, mainContainer)`: The method called when the tool is selected. Here the tool injects its HTML into the sidebar for controls and into the main container for the graphical canvas. It also sets up event listeners.
+*   `destroy()`: The method called when the user changes tools. It is used to stop animations (e.g., `requestAnimationFrame`), remove listeners, and clean up the DOM.
 
-*(Esempi attuali di tool implementati: `chladni`, `hydrogen`, `oscilloscope`)*
+*(Current examples of implemented tools: `chladni`, `hydrogen`, `oscilloscope`)*
 
-## 4. Flusso di Esecuzione (Runtime)
+## 4. Execution Flow (Runtime)
 
-1.  **Avvio**: Vite serve l'applicazione e carica `index.html`.
-2.  **Inizializzazione**: Viene eseguito `src/app.js`. Costruisce la barra di navigazione ciclando l'oggetto `tools`.
-3.  **Caricamento Iniziale**: Viene chiamato `loadTool(chladniTool.id)` per caricare il tool di default.
-4.  **Interazione**: L'utente cambia le impostazioni nella sidebar; la logica interna del tool reagisce e aggiorna il canvas in tempo reale.
-5.  **Cambio Tool**: L'utente clicca un pulsante nella navigazione. L'applicazione esegue il teardown (`destroy()`) del tool attuale, resetta il DOM tramite animazioni di fading, ed esegue il setup (`init()`) del nuovo tool scelto.
-6.  **Esportazione**: Cliccando su Export, l'evento globale rileva il tool attivo e ne invoca i metodi di esportazione specifici, delegando al tool la serializzazione della propria grafica.
+1.  **Startup**: Vite serves the application and loads `index.html`.
+2.  **Initialization**: `src/app.js` is executed. It builds the navigation bar by iterating over the `tools` object.
+3.  **Initial Load**: `loadTool(chladniTool.id)` is called to load the default tool.
+4.  **Interaction**: The user changes settings in the sidebar; the internal logic of the tool reacts and updates the canvas in real-time.
+5.  **Tool Switch**: The user clicks a button in the navigation. The application executes the teardown (`destroy()`) of the current tool, resets the DOM via fading animations, and executes the setup (`init()`) of the newly chosen tool.
+6.  **Export**: Clicking Export, the global event detects the active tool and invokes its specific export methods, delegating to the tool the serialization of its own graphics.
 
-## 5. Riepilogo File System
+## 5. File System Overview
 
 ```text
 Graphic-Tools/
-├── package.json           # Dipendenze (vite, motion) e script (dev, build)
-├── index.html             # Layout shell e inclusione script principali
+├── package.json           # Dependencies (vite, motion) and scripts (dev, build)
+├── index.html             # Shell layout and inclusion of main scripts
 ├── src/
-│   ├── app.js             # Orchestratore, routing e logica globale dell'app
-│   ├── Assets/            # Immagini, loghi e risorse statiche
+│   ├── app.js             # Orchestrator, routing, and global logic of the app
+│   ├── Assets/            # Images, logos, and static resources
 │   ├── styles/
-│   │   └── global.css     # Stili globali, layout a livelli, theming (vetro)
-│   └── tools/             # Moduli dei singoli strumenti
-│       ├── chladni/       # Logica e UI per la generazione di figure di Chladni
-│       ├── hydrogen/      # Logica e UI per orbitale atomico Hydrogen
-│       └── oscilloscope/  # Logica e UI per l'oscilloscopio
+│   │   └── global.css     # Global styles, layered layout, theming (glass)
+│   └── tools/             # Modules for individual instruments
+│       ├── chladni/       # Logic and UI for Chladni figure generation
+│       ├── hydrogen/      # Logic and UI for Hydrogen atomic orbital
+│       └── oscilloscope/  # Logic and UI for the oscilloscope
 ```
