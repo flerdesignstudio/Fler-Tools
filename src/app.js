@@ -1,6 +1,10 @@
+import { injectSpeedInsights } from '@vercel/speed-insights';
 import chladniTool from './tools/chladni/chladni-ui.js';
 import hydrogenTool from './tools/hydrogen/hydrogen-ui.js';
 import oscilloscopeTool from './tools/oscilloscope/oscilloscope-ui.js';
+
+// Inizializza Vercel Speed Insights
+injectSpeedInsights();
 
 // --- Tool Registry ---
 export const tools = {
