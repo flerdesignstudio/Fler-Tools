@@ -198,10 +198,29 @@ body::before {
     border-radius: 2px;
 }
 
-.nav-bar-frame {
+.nav-bar-wrapper {
+    position: absolute;
     top: 15px;
-    left: 50%;
-    transform: translateX(-50%);
+    left: 0;
+    right: 0;
+    display: flex;
+    pointer-events: none;
+    z-index: 20;
+}
+
+.nav-bar-spacer-left {
+    flex: 1 0 385px;
+    /* 360px left panel + 15px gap + 10px extra margin */
+}
+
+.nav-bar-spacer-right {
+    flex: 1 1 385px;
+}
+
+.nav-bar-frame {
+    pointer-events: auto;
+    flex: 0 0 auto;
+    position: relative;
     display: flex;
     gap: 6px;
     padding: 8px;
@@ -340,6 +359,7 @@ body::before {
     background: var(--glass-high);
     border-radius: 3px;
 }
+
 .notion-slider::-moz-range-thumb {
     width: 16px;
     height: 16px;
@@ -350,6 +370,7 @@ body::before {
     box-shadow: 0 0 0 2px var(--bg-base), 0 2px 6px rgba(0, 0, 0, 0.6);
     transition: transform var(--dur-fast) var(--ease-standard), box-shadow var(--dur-fast) var(--ease-standard);
 }
+
 .notion-slider::-moz-range-thumb:hover {
     transform: scale(1.2);
     box-shadow: 0 0 0 3px var(--accent-dim), 0 2px 8px rgba(0, 0, 0, 0.6);
@@ -626,7 +647,8 @@ input[type="color"]::-moz-color-swatch {
 
 #visualizer,
 #hydrogen_visualizer,
-#oscVisualizer {
+#oscVisualizer,
+#asciiCanvas {
     display: block;
     max-width: 90%;
     max-height: 90%;
@@ -638,4 +660,102 @@ input[type="color"]::-moz-color-swatch {
         0 0 60px rgba(0, 0, 0, 0.4);
     border-radius: 2px;
     transition: width var(--dur-slow) var(--ease-premium), height var(--dur-slow) var(--ease-premium);
+}
+
+/* ── Tools Modal ─────────────────────────────────── */
+.tools-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    z-index: 9999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity var(--dur-normal) var(--ease-premium), visibility 0s linear var(--dur-normal);
+}
+
+.tools-modal-content {
+    width: fit-content;
+    max-width: 90vw;
+    padding: 16px;
+    background: var(--bg-panel-solid);
+    border: 1px solid var(--border-default);
+    transform: scale(0.95) translateY(10px);
+    opacity: 0;
+    transition: transform var(--dur-normal) var(--ease-premium), opacity var(--dur-normal) var(--ease-premium);
+}
+
+.tools-modal-overlay.active {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transition: opacity var(--dur-normal) var(--ease-premium), visibility 0s linear;
+}
+
+.tools-modal-overlay.active .tools-modal-content {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+}
+
+.tools-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.tools-modal-header h2 {
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+    letter-spacing: -0.01em;
+}
+
+.tools-modal-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 8px;
+    max-width: calc((130px * 4) + (8px * 3));
+}
+
+.tool-card {
+    flex: 0 0 130px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 12px 12px;
+    background: var(--glass-low);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: background var(--dur-fast) var(--ease-standard), border-color var(--dur-fast) var(--ease-standard), transform var(--dur-fast) var(--ease-standard);
+}
+
+.tool-card:hover {
+    background: var(--glass-hover);
+    border-color: var(--border-strong);
+    transform: translateY(-2px);
+}
+
+.tool-card .icon {
+    font-size: 24px;
+    color: var(--text-primary);
+}
+
+.tool-card .label {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
 }

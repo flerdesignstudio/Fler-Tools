@@ -2,6 +2,7 @@ import { injectSpeedInsights } from '@vercel/speed-insights';
 import chladniTool from './tools/chladni/chladni-ui.js';
 import hydrogenTool from './tools/hydrogen/hydrogen-ui.js';
 import oscilloscopeTool from './tools/oscilloscope/oscilloscope-ui.js';
+import asciiTool from './tools/ascii/ascii-ui.js';
 
 // Inizializza Vercel Speed Insights
 injectSpeedInsights();
@@ -10,8 +11,8 @@ injectSpeedInsights();
 export const tools = {
     [chladniTool.id]: chladniTool,
     [hydrogenTool.id]: hydrogenTool,
-    [oscilloscopeTool.id]: oscilloscopeTool
-    // New tools will be imported and added here
+    [oscilloscopeTool.id]: oscilloscopeTool,
+    [asciiTool.id]: asciiTool
 };
 
 import { animate } from 'motion';
@@ -59,9 +60,12 @@ export const loadTool = async (toolId) => {
 
 document.addEventListener('DOMContentLoaded', () => {
     const navMenu = document.getElementById('app-navigation');
+    const toolsArray = Object.values(tools);
+    const maxNavTools = 3;
+    const navTools = toolsArray.slice(0, maxNavTools);
 
-    // Build Navigation UI
-    Object.values(tools).forEach(tool => {
+    // Build Navigation UI (Top Bar)
+    navTools.forEach(tool => {
         const btn = document.createElement('button');
         btn.className = 'notion-btn notion-btn-secondary nav-btn';
         btn.dataset.toolId = tool.id;
@@ -70,7 +74,45 @@ document.addEventListener('DOMContentLoaded', () => {
         navMenu.appendChild(btn);
     });
 
+    if (toolsArray.length > maxNavTools) {
+        const moreBtn = document.createElement('button');
+        moreBtn.className = 'notion-btn notion-btn-secondary more-tools-btn';
+        moreBtn.innerHTML = `<span class="icon" style="font-size: 16px;">+</span>`;
+        moreBtn.title = "More Tools";
+        moreBtn.onclick = () => {
+            const overlay = document.getElementById('tools-modal-overlay');
+            if (overlay) overlay.classList.add('active');
+        };
+        navMenu.appendChild(moreBtn);
+    }
 
+    // Build Modal Grid
+    const modalGrid = document.getElementById('tools-modal-grid');
+    if (modalGrid) {
+        toolsArray.forEach(tool => {
+            const card = document.createElement('div');
+            card.className = 'tool-card';
+            card.innerHTML = `<span class="icon">${tool.icon}</span><span class="label">${tool.label}</span>`;
+            card.onclick = () => {
+                loadTool(tool.id);
+                const overlay = document.getElementById('tools-modal-overlay');
+                if (overlay) overlay.classList.remove('active');
+            };
+            modalGrid.appendChild(card);
+        });
+    }
+
+    // Modal Close Handlers
+    const closeBtn = document.getElementById('closeToolsModalBtn');
+    const modalOverlay = document.getElementById('tools-modal-overlay');
+    if (closeBtn && modalOverlay) {
+        closeBtn.onclick = () => modalOverlay.classList.remove('active');
+    }
+    if (modalOverlay) {
+        modalOverlay.onclick = (e) => {
+            if (e.target === modalOverlay) modalOverlay.classList.remove('active');
+        };
+    }
 
     // Load initial tool (Chladni)
     loadTool(chladniTool.id);

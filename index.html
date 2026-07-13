@@ -49,8 +49,12 @@
         </div>
 
         <!-- Top Center: Navigation Bar -->
-        <div class="nav-bar-frame panel" id="app-navigation">
-            <!-- Dynamic Navigation Buttons Injected Here -->
+        <div class="nav-bar-wrapper">
+            <div class="nav-bar-spacer-left"></div>
+            <div class="nav-bar-frame panel" id="app-navigation">
+                <!-- Dynamic Navigation Buttons Injected Here -->
+            </div>
+            <div class="nav-bar-spacer-right"></div>
         </div>
 
         <!-- Bottom Right: Export Frame -->
@@ -64,6 +68,21 @@
             <span class="material-symbols-outlined">fullscreen</span>
         </button>
 
+    </div>
+
+    <!-- Tools Modal Overlay -->
+    <div id="tools-modal-overlay" class="tools-modal-overlay">
+        <div id="tools-modal-content" class="tools-modal-content panel">
+            <div class="tools-modal-header">
+                <h2>All Tools</h2>
+                <button class="notion-btn notion-btn-secondary close-modal-btn" id="closeToolsModalBtn">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <div id="tools-modal-grid" class="tools-modal-grid">
+                <!-- Tool cards will be injected here -->
+            </div>
+        </div>
     </div>
 
     <script type="module" src="/src/app.js"></script>

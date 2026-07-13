@@ -1,0 +1,295 @@
+import { AsciiVisualizer } from './ascii-visualizer.js';
+import { animate, stagger } from 'motion';
+
+export default {
+    id: 'ascii',
+    label: 'ASCII Art',
+    icon: '▦',
+
+    _visualizer: null,
+    _listeners: [],       // { el, eventName, handler } — element-bound listeners, cleaned up in destroy()
+
+    // View-only state (pan/zoom/rotation). Never touches pixels, so it lives here, not in the visualizer.
+    _view: { isDragging: false, startX: 0, startY: 0, panX: 0, panY: 0, zoom: 1 },
+
+    getSidebarHTML() {
+        return `
+            <section class="control-group">
+                <h2 class="group-title">Source</h2>
+                <div class="setting-row">
+                    <label for="asciiMediaUpload">Upload Media (Photo/Video)</label>
+                    <input type="file" id="asciiMediaUpload" accept="image/*,video/*" class="notion-input">
+                </div>
+                <div class="setting-row">
+                    <label>Aspect Ratio</label>
+                    <select id="asciiAspectRatio" class="notion-select">
+                        <option value="original">Original Aspect Ratio</option>
+                        <option value="square">1:1 (Square)</option>
+                    </select>
+                </div>
+            </section>
+            <hr class="separator" />
+            <section class="control-group">
+                <h2 class="group-title">Settings & Pattern</h2>
+                <div class="slider-row">
+                    <div class="slider-header">
+                        <label for="asciiResolution">Grid Resolution</label>
+                        <span id="asciiResVal" aria-live="polite">80</span>
+                    </div>
+                    <input type="range" id="asciiResolution" min="20" max="180" step="1" value="80" class="notion-slider">
+                    <span class="status-msg">Horizontal characters count</span>
+                </div>
+                <div class="setting-row">
+                    <label>Canvas Resolution</label>
+                    <select id="asciiCanvasRes" class="notion-select">
+                        <option value="800">Standard (800px)</option>
+                        <option value="1280">HD (1280px / 720p)</option>
+                        <option value="1920">Full HD (1920px / 1080p)</option>
+                        <option value="1080">Square HD (1080x1080)</option>
+                        <option value="2560">2K QHD (2560px / 1440p)</option>
+                    </select>
+                </div>
+                <div class="setting-row">
+                    <label>Character Set</label>
+                    <select id="asciiCharset" class="notion-select">
+                        <option value="alphanumeric">Letters & Numbers</option>
+                        <option value="letters">Letters Only</option>
+                        <option value="numbers">Numbers Only</option>
+                        <option value="emoji">Custom Emoji</option>
+                    </select>
+                </div>
+                <div class="setting-row" id="asciiEmojiGroup" style="display: none;">
+                    <label for="asciiCustomEmoji">Emoji (Dark to Light)</label>
+                    <input type="text" id="asciiCustomEmoji" value="🌑🌒🌓🌔🌕🌞" class="notion-input">
+                </div>
+                <div class="setting-row">
+                    <label>Font</label>
+                    <select id="asciiFontFamily" class="notion-select">
+                        <option value="Space Mono">Space Mono</option>
+                        <option value="Roboto Mono">Roboto Mono</option>
+                        <option value="Fira Code">Fira Code</option>
+                        <option value="VT323">VT323</option>
+                        <option value="JetBrains Mono">JetBrains Mono</option>
+                        <option value="Inconsolata">Inconsolata</option>
+                        <option value="Source Code Pro">Source Code Pro</option>
+                        <option value="IBM Plex Mono">IBM Plex Mono</option>
+                        <option value="Ubuntu Mono">Ubuntu Mono</option>
+                        <option value="Courier Prime">Courier Prime</option>
+                    </select>
+                </div>
+            </section>
+            <hr class="separator" />
+            <section class="control-group">
+                <h2 class="group-title">Colors</h2>
+                <div class="color-grid">
+                    <div class="color-item">
+                        <label for="asciiBgColor">Background</label>
+                        <div class="color-wrapper"><input type="color" id="asciiBgColor" value="#0d47a1"></div>
+                    </div>
+                    <div class="color-item">
+                        <label for="asciiTextColor">Text</label>
+                        <div class="color-wrapper"><input type="color" id="asciiTextColor" value="#ffffff"></div>
+                    </div>
+                </div>
+            </section>
+            <hr class="separator" />
+            <section class="control-group">
+                <h2 class="group-title">3D View</h2>
+                <div class="slider-row">
+                    <div class="slider-header">
+                        <label for="asciiRotX">Rotation X</label>
+                    </div>
+                    <input type="range" id="asciiRotX" min="-60" max="60" step="1" value="0" class="notion-slider">
+                </div>
+                <div class="slider-row">
+                    <div class="slider-header">
+                        <label for="asciiRotY">Rotation Y</label>
+                    </div>
+                    <input type="range" id="asciiRotY" min="-60" max="60" step="1" value="0" class="notion-slider">
+                </div>
+                <button id="asciiResetView" class="notion-btn notion-btn-secondary">Reset Zoom & Pan</button>
+            </section>
+        `;
+    },
+
+    getMainHTML() {
+        return `
+            <div id="asciiPreview" class="ascii-preview">
+                <div id="asciiCanvasWrapper" class="ascii-canvas-wrapper">
+                    <canvas id="asciiCanvas" role="img" aria-label="ASCII art render"></canvas>
+                </div>
+            </div>
+        `;
+    },
+
+    _injectScopedAssets() {
+        if (!document.getElementById('ascii-tool-fonts')) {
+            const link = document.createElement('link');
+            link.id = 'ascii-tool-fonts';
+            link.rel = 'stylesheet';
+            link.href = 'https://fonts.googleapis.com/css2?family=Courier+Prime&family=Fira+Code:wght@400&family=IBM+Plex+Mono:wght@400&family=Inconsolata:wght@400&family=JetBrains+Mono:wght@400&family=Roboto+Mono:wght@400&family=Source+Code+Pro:wght@400&family=Space+Mono:wght@400&family=Ubuntu+Mono:wght@400&family=VT323&display=swap';
+            document.head.appendChild(link);
+        }
+
+        if (!document.getElementById('ascii-tool-styles')) {
+            const style = document.createElement('style');
+            style.id = 'ascii-tool-styles';
+            style.textContent = `
+                .ascii-preview {
+                    width: 100%;
+                    height: 100%;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    overflow: hidden;
+                    position: relative;
+                    cursor: grab;
+                    perspective: 1200px;
+                }
+                .ascii-preview:active { cursor: grabbing; }
+                .ascii-canvas-wrapper { transform-origin: center center; display: inline-block; }
+                #asciiCanvas {
+                    transition: transform 0.05s linear, width var(--dur-slow) var(--ease-premium), height var(--dur-slow) var(--ease-premium);
+                    object-fit: contain;
+                }
+            `;
+            document.head.appendChild(style);
+        }
+    },
+
+    _addListenerEl(el, eventName, handler) {
+        if (!el) return;
+        el.addEventListener(eventName, handler);
+        this._listeners.push({ el, eventName, handler });
+    },
+
+    _addListener(elementId, eventName, handler) {
+        this._addListenerEl(document.getElementById(elementId), eventName, handler);
+    },
+
+    init(sidebarContainer, mainContainer) {
+        this._injectScopedAssets();
+
+        sidebarContainer.innerHTML = this.getSidebarHTML();
+        mainContainer.innerHTML = this.getMainHTML();
+
+        animate(".control-group", { opacity: [0, 1], x: [-15, 0] }, { delay: stagger(0.08), duration: 0.4, easing: [0.4, 0, 0.2, 1] });
+        animate("#asciiPreview", { opacity: [0, 1], scale: [0.97, 1] }, { duration: 0.5, easing: [0.05, 0.7, 0.1, 1] });
+
+        const canvas = document.getElementById('asciiCanvas');
+        this._visualizer = new AsciiVisualizer(canvas);
+
+        this._bindPanZoomRotate();
+        this._bindControls();
+    },
+
+    _applyViewTransforms() {
+        const wrapper = document.getElementById('asciiCanvasWrapper');
+        const { panX, panY, zoom } = this._view;
+        wrapper.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`;
+    },
+
+    _updateRotation() {
+        const canvas = document.getElementById('asciiCanvas');
+        const rotX = document.getElementById('asciiRotX').value;
+        const rotY = document.getElementById('asciiRotY').value;
+        canvas.style.transform = `rotateX(${rotX}deg) rotateY(${rotY}deg)`;
+    },
+
+    _bindPanZoomRotate() {
+        const container = document.getElementById('asciiPreview');
+        const v = this._view;
+
+        this._addListenerEl(container, 'wheel', (e) => {
+            e.preventDefault();
+            const zoomSpeed = 0.08;
+            v.zoom += (e.deltaY < 0 ? zoomSpeed : -zoomSpeed);
+            v.zoom = Math.max(0.15, Math.min(6, v.zoom));
+            this._applyViewTransforms();
+        });
+
+        this._addListenerEl(container, 'mousedown', (e) => {
+            if (['INPUT', 'SELECT', 'BUTTON'].includes(e.target.tagName)) return;
+            v.isDragging = true;
+            v.startX = e.clientX - v.panX;
+            v.startY = e.clientY - v.panY;
+        });
+
+        this._addListenerEl(window, 'mousemove', (e) => {
+            if (!v.isDragging) return;
+            v.panX = e.clientX - v.startX;
+            v.panY = e.clientY - v.startY;
+            this._applyViewTransforms();
+        });
+
+        this._addListenerEl(window, 'mouseup', () => { v.isDragging = false; });
+        this._addListenerEl(window, 'mouseleave', () => { v.isDragging = false; });
+
+        this._addListener('asciiRotX', 'input', () => this._updateRotation());
+        this._addListener('asciiRotY', 'input', () => this._updateRotation());
+
+        this._addListener('asciiResetView', 'click', () => {
+            v.panX = 0; v.panY = 0; v.zoom = 1;
+            document.getElementById('asciiRotX').value = 0;
+            document.getElementById('asciiRotY').value = 0;
+            this._applyViewTransforms();
+            this._updateRotation();
+        });
+    },
+
+    _bindControls() {
+        const v = this._visualizer;
+
+        this._addListener('asciiMediaUpload', 'change', (e) => {
+            v.loadMedia(e.target.files[0]);
+        });
+
+        this._addListener('asciiAspectRatio', 'change', (e) => {
+            v.updateConfig({ aspectMode: e.target.value });
+        });
+
+        this._addListener('asciiResolution', 'input', (e) => {
+            document.getElementById('asciiResVal').textContent = e.target.value;
+            v.updateConfig({ gridResolution: parseInt(e.target.value) });
+        });
+
+        this._addListener('asciiCharset', 'change', (e) => {
+            document.getElementById('asciiEmojiGroup').style.display = (e.target.value === 'emoji') ? 'flex' : 'none';
+            v.updateConfig({ charsetKey: e.target.value });
+        });
+
+        this._addListener('asciiCustomEmoji', 'input', (e) => {
+            v.updateConfig({ customEmoji: e.target.value });
+        });
+
+        this._addListener('asciiFontFamily', 'change', (e) => {
+            v.updateConfig({ fontFamily: e.target.value });
+        });
+
+        this._addListener('asciiBgColor', 'input', (e) => {
+            v.updateConfig({ bgColor: e.target.value });
+        });
+
+        this._addListener('asciiTextColor', 'input', (e) => {
+            v.updateConfig({ textColor: e.target.value });
+        });
+
+        this._addListener('asciiCanvasRes', 'change', (e) => {
+            v.updateConfig({ canvasRes: parseInt(e.target.value) });
+        });
+    },
+
+    destroy() {
+        if (this._visualizer) {
+            this._visualizer.destroy();
+            this._visualizer = null;
+        }
+
+        this._listeners.forEach(({ el, eventName, handler }) => {
+            el.removeEventListener(eventName, handler);
+        });
+        this._listeners = [];
+
+        this._view = { isDragging: false, startX: 0, startY: 0, panX: 0, panY: 0, zoom: 1 };
+    }
+}
