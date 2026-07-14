@@ -3,6 +3,7 @@ import chladniTool from './tools/chladni/chladni-ui.js';
 import hydrogenTool from './tools/hydrogen/hydrogen-ui.js';
 import oscilloscopeTool from './tools/oscilloscope/oscilloscope-ui.js';
 import asciiTool from './tools/ascii/ascii-ui.js';
+import ditherTool from './tools/dither/dither-ui.js';
 
 // Inizializza Vercel Speed Insights
 injectSpeedInsights();
@@ -12,10 +13,82 @@ export const tools = {
     [chladniTool.id]: chladniTool,
     [hydrogenTool.id]: hydrogenTool,
     [oscilloscopeTool.id]: oscilloscopeTool,
-    [asciiTool.id]: asciiTool
+    [asciiTool.id]: asciiTool,
+    [ditherTool.id]: ditherTool
 };
 
 import { animate } from 'motion';
+
+let navToolIds = null;
+let mruQueue = [];
+
+function renderNavigation(activeToolId) {
+    const navMenu = document.getElementById('app-navigation');
+    if (!navMenu) return;
+    navMenu.innerHTML = '';
+    
+    const toolsArray = Object.values(tools);
+    const maxNavTools = 3;
+    const activeTool = tools[activeToolId];
+    if (!activeTool) return;
+    
+    // Initialize state on first run
+    if (!navToolIds) {
+        navToolIds = toolsArray.slice(0, maxNavTools).map(t => t.id);
+        mruQueue = [...navToolIds];
+    }
+
+    // Update MRU queue
+    mruQueue = [activeToolId, ...mruQueue.filter(id => id !== activeToolId)];
+    
+    // Check if we need to replace a tool in the visible nav
+    if (!navToolIds.includes(activeToolId)) {
+        // Find the least recently used tool that is currently in navToolIds
+        let victimId = null;
+        for (let i = mruQueue.length - 1; i >= 0; i--) {
+            if (navToolIds.includes(mruQueue[i])) {
+                victimId = mruQueue[i];
+                break;
+            }
+        }
+        
+        // Replace victimId with activeToolId in navToolIds
+        const victimIndex = navToolIds.indexOf(victimId);
+        if (victimIndex !== -1) {
+            navToolIds[victimIndex] = activeToolId;
+        } else {
+            // Fallback (shouldn't happen)
+            navToolIds.unshift(activeToolId);
+            if (navToolIds.length > maxNavTools) navToolIds.pop();
+        }
+    }
+    
+    const navTools = navToolIds.map(id => tools[id]).filter(Boolean);
+
+    navTools.forEach(tool => {
+        const btn = document.createElement('button');
+        btn.className = 'notion-btn notion-btn-secondary nav-btn';
+        btn.dataset.toolId = tool.id;
+        btn.innerHTML = `<span class="icon">${tool.icon}</span> ${tool.label}`;
+        if (tool.id === activeToolId) {
+            btn.classList.add('active');
+        }
+        btn.onclick = () => loadTool(tool.id);
+        navMenu.appendChild(btn);
+    });
+
+    if (toolsArray.length > maxNavTools) {
+        const moreBtn = document.createElement('button');
+        moreBtn.className = 'notion-btn notion-btn-secondary more-tools-btn';
+        moreBtn.innerHTML = `<span class="icon" style="font-size: 16px;">+</span>`;
+        moreBtn.title = "More Tools";
+        moreBtn.onclick = () => {
+            const overlay = document.getElementById('tools-modal-overlay');
+            if (overlay) overlay.classList.add('active');
+        };
+        navMenu.appendChild(moreBtn);
+    }
+}
 
 let currentTool = null;
 
@@ -40,10 +113,8 @@ export const loadTool = async (toolId) => {
         }
     }
 
-    // Update active state in nav
-    document.querySelectorAll('.nav-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.toolId === toolId);
-    });
+    // Update active state in nav by re-rendering
+    renderNavigation(toolId);
 
     // Reset container styles for new tool's entrance
     sidebarContainer.style.opacity = 1;
@@ -59,32 +130,7 @@ export const loadTool = async (toolId) => {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
-    const navMenu = document.getElementById('app-navigation');
     const toolsArray = Object.values(tools);
-    const maxNavTools = 3;
-    const navTools = toolsArray.slice(0, maxNavTools);
-
-    // Build Navigation UI (Top Bar)
-    navTools.forEach(tool => {
-        const btn = document.createElement('button');
-        btn.className = 'notion-btn notion-btn-secondary nav-btn';
-        btn.dataset.toolId = tool.id;
-        btn.innerHTML = `<span class="icon">${tool.icon}</span> ${tool.label}`;
-        btn.onclick = () => loadTool(tool.id);
-        navMenu.appendChild(btn);
-    });
-
-    if (toolsArray.length > maxNavTools) {
-        const moreBtn = document.createElement('button');
-        moreBtn.className = 'notion-btn notion-btn-secondary more-tools-btn';
-        moreBtn.innerHTML = `<span class="icon" style="font-size: 16px;">+</span>`;
-        moreBtn.title = "More Tools";
-        moreBtn.onclick = () => {
-            const overlay = document.getElementById('tools-modal-overlay');
-            if (overlay) overlay.classList.add('active');
-        };
-        navMenu.appendChild(moreBtn);
-    }
 
     // Build Modal Grid
     const modalGrid = document.getElementById('tools-modal-grid');
@@ -114,6 +160,23 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
+    // Info Modal Handlers
+    const infoBtn = document.getElementById('infoBtn');
+    const infoModalOverlay = document.getElementById('info-modal-overlay');
+    const closeInfoBtn = document.getElementById('closeInfoModalBtn');
+
+    if (infoBtn && infoModalOverlay) {
+        infoBtn.onclick = () => infoModalOverlay.classList.add('active');
+    }
+    if (closeInfoBtn && infoModalOverlay) {
+        closeInfoBtn.onclick = () => infoModalOverlay.classList.remove('active');
+    }
+    if (infoModalOverlay) {
+        infoModalOverlay.onclick = (e) => {
+            if (e.target === infoModalOverlay) infoModalOverlay.classList.remove('active');
+        };
+    }
+
     // Load initial tool (Chladni)
     loadTool(chladniTool.id);
 
@@ -137,6 +200,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('exportSvgBtn').addEventListener('click', () => {
         if (currentTool && currentTool._visualizer && currentTool._visualizer.exportToSVG) {
+            if (currentTool._visualizer.isSvgExportRisky && currentTool._visualizer.isSvgExportRisky()) {
+                const proceed = confirm("Warning: Exporting a diffusion dither to SVG can create a massive file (millions of nodes) that might freeze your browser or design tools. Proceed anyway?");
+                if (!proceed) return;
+            }
             const svgString = currentTool._visualizer.exportToSVG();
             const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
             const url = URL.createObjectURL(blob);

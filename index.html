@@ -5,8 +5,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fler Design Studio Tools</title>
-    <link rel="icon" type="image/svg+xml" href="src/Assets/Fler_Tools_Icon_Black.svg" media="(prefers-color-scheme: light)">
-    <link rel="icon" type="image/svg+xml" href="src/Assets/Fler_Tools_Icon_White.svg" media="(prefers-color-scheme: dark)">
+    <link rel="icon" type="image/svg+xml" href="src/Assets/Fler_Tools_Icon_Black.svg"
+        media="(prefers-color-scheme: light)">
+    <link rel="icon" type="image/svg+xml" href="src/Assets/Fler_Tools_Icon_White.svg"
+        media="(prefers-color-scheme: dark)">
     <link rel="stylesheet" href="src/styles/global.css">
     <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" as="style"
         onload="this.onload=null;this.rel='stylesheet'">
@@ -65,10 +67,15 @@
             <button class="notion-btn notion-btn-secondary" id="exportSvgBtn">Export SVG</button>
         </div>
 
-        <!-- Top Right: Fullscreen Button -->
-        <button class="fullscreen-btn panel" id="fullscreenBtn" title="Toggle Fullscreen">
-            <span class="material-symbols-outlined">fullscreen</span>
-        </button>
+        <!-- Top Right: Actions -->
+        <div class="top-right-actions">
+            <button class="icon-btn panel" id="infoBtn" title="About Graphic-Tools">
+                <span class="material-symbols-outlined">info</span>
+            </button>
+            <button class="icon-btn panel" id="fullscreenBtn" title="Toggle Fullscreen">
+                <span class="material-symbols-outlined">fullscreen</span>
+            </button>
+        </div>
 
     </div>
 
@@ -83,6 +90,40 @@
             </div>
             <div id="tools-modal-grid" class="tools-modal-grid">
                 <!-- Tool cards will be injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Info Modal Overlay -->
+    <div id="info-modal-overlay" class="tools-modal-overlay">
+        <div id="info-modal-content" class="tools-modal-content panel" style="max-width: 500px; padding: 24px;">
+            <div class="tools-modal-header" style="margin-bottom: 16px;">
+                <h2>About Fler Tools</h2>
+                <button class="notion-btn notion-btn-secondary close-modal-btn" id="closeInfoModalBtn">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <div class="info-modal-body" style="font-size: 14px; color: var(--text-secondary); line-height: 1.6;">
+                <p style="margin-bottom: 12px;"><strong>Fler Tools</strong> is an open-source graphical generative
+                    toolkit. We built it to provide an accessible, browser-based alternative for generating unique
+                    visual assets while exploring the underlying math and physics.</p>
+                <p style="margin-bottom: 12px;"><strong>How to contribute:</strong> You can help us improve by adding
+                    new tools, fixing bugs, or enhancing documentation on <a
+                        href="https://github.com/flerdesignstudio/Graphic-Tools" target="_blank"
+                        style="color: var(--text-primary);">GitHub</a>.</p>
+                <p style="margin-bottom: 24px;"><strong>Who we are:</strong> We are Fler Design Studio, a team
+                    passionate about design and technology.</p>
+
+                <div style="display: flex; gap: 12px;">
+                    <a href="https://www.flerdesign.com/" target="_blank" class="notion-btn notion-btn-secondary"
+                        style="text-decoration: none; color: inherit;">
+                        <span class="material-symbols-outlined" style="font-size: 18px;">language</span> Website
+                    </a>
+                    <a href="mailto:info@flerdesign.com" class="notion-btn notion-btn-secondary"
+                        style="text-decoration: none; color: inherit;">
+                        <span class="material-symbols-outlined" style="font-size: 18px;">mail</span> Contact Us
+                    </a>
+                </div>
             </div>
         </div>
     </div>

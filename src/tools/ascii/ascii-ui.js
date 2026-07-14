@@ -17,8 +17,12 @@ export default {
             <section class="control-group">
                 <h2 class="group-title">Source</h2>
                 <div class="setting-row">
-                    <label for="asciiMediaUpload">Upload Media (Photo/Video)</label>
-                    <input type="file" id="asciiMediaUpload" accept="image/*,video/*" class="notion-input">
+                    <label>Upload Media (Photo/Video)</label>
+                    <div id="asciiDropZone" class="tool-drop-zone">
+                        <span class="material-symbols-outlined">upload_file</span>
+                        <p>Drag & drop media here<br>or click to browse</p>
+                        <input type="file" id="asciiMediaUpload" accept="image/*,video/*" class="tool-file-input">
+                    </div>
                 </div>
                 <div class="setting-row">
                     <label>Aspect Ratio</label>
@@ -239,6 +243,27 @@ export default {
 
     _bindControls() {
         const v = this._visualizer;
+
+        const dropZone = document.getElementById('asciiDropZone');
+        if (dropZone) {
+            ['dragenter', 'dragover'].forEach(eventName => {
+                this._addListenerEl(dropZone, eventName, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    dropZone.classList.add('dragover');
+                });
+            });
+            ['dragleave', 'drop'].forEach(eventName => {
+                this._addListenerEl(dropZone, eventName, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    dropZone.classList.remove('dragover');
+                    if (eventName === 'drop' && e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                        v.loadMedia(e.dataTransfer.files[0]);
+                    }
+                });
+            });
+        }
 
         this._addListener('asciiMediaUpload', 'change', (e) => {
             v.loadMedia(e.target.files[0]);
