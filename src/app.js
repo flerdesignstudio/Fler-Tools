@@ -1,12 +1,14 @@
 import { injectSpeedInsights } from '@vercel/speed-insights';
+import { inject } from '@vercel/analytics';
 import chladniTool from './tools/chladni/chladni-ui.js';
 import hydrogenTool from './tools/hydrogen/hydrogen-ui.js';
 import oscilloscopeTool from './tools/oscilloscope/oscilloscope-ui.js';
 import asciiTool from './tools/ascii/ascii-ui.js';
 import ditherTool from './tools/dither/dither-ui.js';
 
-// Inizializza Vercel Speed Insights
+// Inizializza Vercel Speed Insights e Web Analytics
 injectSpeedInsights();
+inject();
 
 // --- Tool Registry ---
 export const tools = {
