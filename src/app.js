@@ -5,6 +5,7 @@ import hydrogenTool from './tools/hydrogen/hydrogen-ui.js';
 import oscilloscopeTool from './tools/oscilloscope/oscilloscope-ui.js';
 import asciiTool from './tools/ascii/ascii-ui.js';
 import ditherTool from './tools/dither/dither-ui.js';
+import cellsTool from './tools/cells/cells-ui.js';
 
 // Inizializza Vercel Speed Insights e Web Analytics
 injectSpeedInsights();
@@ -16,7 +17,8 @@ export const tools = {
     [hydrogenTool.id]: hydrogenTool,
     [oscilloscopeTool.id]: oscilloscopeTool,
     [asciiTool.id]: asciiTool,
-    [ditherTool.id]: ditherTool
+    [ditherTool.id]: ditherTool,
+    [cellsTool.id]: cellsTool
 };
 
 import { animate } from 'motion';

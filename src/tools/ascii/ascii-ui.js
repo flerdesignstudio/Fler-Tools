@@ -183,8 +183,38 @@ export default {
         const canvas = document.getElementById('asciiCanvas');
         this._visualizer = new AsciiVisualizer(canvas);
 
+        this._syncUIToVisualizer();
+
         this._bindPanZoomRotate();
         this._bindControls();
+    },
+
+    _syncUIToVisualizer() {
+        const v = this._visualizer;
+        if (!v) return;
+
+        const configMap = {
+            'asciiResolution': v.config.gridResolution,
+            'asciiCanvasRes': v.config.canvasRes,
+            'asciiCharset': v.config.charsetKey,
+            'asciiCustomEmoji': v.config.customEmoji,
+            'asciiFontFamily': v.config.fontFamily,
+            'asciiBgColor': v.config.bgColor,
+            'asciiTextColor': v.config.textColor
+        };
+
+        for (const [id, val] of Object.entries(configMap)) {
+            const input = document.getElementById(id);
+            if (input) input.value = val;
+        }
+
+        const resVal = document.getElementById('asciiResVal');
+        if (resVal) resVal.textContent = v.config.gridResolution;
+
+        const emojiGroup = document.getElementById('asciiEmojiGroup');
+        if (emojiGroup) {
+            emojiGroup.style.display = (v.config.charsetKey === 'emoji') ? 'flex' : 'none';
+        }
     },
 
     _applyViewTransforms() {

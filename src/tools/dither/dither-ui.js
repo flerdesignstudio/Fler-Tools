@@ -156,8 +156,44 @@ export default {
         const canvas = document.getElementById('ditherCanvas');
         this._visualizer = new DitherVisualizer(canvas);
 
+        this._syncUIToVisualizer();
+
         this._bindPanZoom();
         this._setupListeners();
+    },
+
+    _syncUIToVisualizer() {
+        const v = this._visualizer;
+        if (!v) return;
+
+        const configMap = {
+            'ditherResolution': v.config.resolution,
+            'ditherBrightness': v.config.brightness,
+            'ditherContrast': v.config.contrast,
+            'ditherAlgorithm': v.config.algorithm,
+            'ditherPalette': v.config.paletteKey,
+            'ditherColor1': v.config.customColor1,
+            'ditherColor2': v.config.customColor2
+        };
+
+        for (const [id, val] of Object.entries(configMap)) {
+            const input = document.getElementById(id);
+            if (input) input.value = val;
+        }
+
+        const resVal = document.getElementById('ditherResVal');
+        if (resVal) resVal.textContent = v.config.resolution + 'px';
+
+        const brightnessVal = document.getElementById('ditherBrightnessVal');
+        if (brightnessVal) brightnessVal.textContent = v.config.brightness;
+
+        const contrastVal = document.getElementById('ditherContrastVal');
+        if (contrastVal) contrastVal.textContent = v.config.contrast;
+
+        const customColors = document.getElementById('ditherCustomColors');
+        if (customColors) {
+            customColors.style.display = (v.config.paletteKey === 'custom') ? 'grid' : 'none';
+        }
     },
 
     _addListenerEl(el, eventName, handler) {

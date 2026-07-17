@@ -156,8 +156,78 @@ export default {
         const canvas = document.getElementById('hydrogen_visualizer');
         this._visualizer = new HydrogenVisualizer(canvas);
 
+        this._syncUIToVisualizer();
         this._pushConfig();
         this._bindEvents();
+    },
+
+    _syncUIToVisualizer() {
+        const v = this._visualizer;
+        if (!v) return;
+
+        const configMap = {
+            'nSlider_h': v.params.n,
+            'lSlider_h': v.params.l,
+            'mSlider_h': v.params.m,
+            'colorBg_h': v.config.bgColor,
+            'posColor_h': v.config.posColor,
+            'negColor_h': v.config.negColor,
+            'particleAlpha_h': v.config.particleAlpha,
+            'rejectAttempts_h': v.config.maxRejectAttempts,
+            'particleCount_h': v.numParticles,
+            'particleSize_h': v.config.particleSize,
+            'svgOpt_h': v.config.svgOptimization
+        };
+
+        for (const [id, val] of Object.entries(configMap)) {
+            const input = document.getElementById(id);
+            if (input) input.value = val;
+        }
+
+        const accumulate = document.getElementById('accumulate_h');
+        if (accumulate) accumulate.checked = v.config.accumulate;
+
+        this._updateConstraints();
+
+        const alphaVal = document.getElementById('particleAlphaVal_h');
+        if (alphaVal) alphaVal.textContent = parseFloat(v.config.particleAlpha).toFixed(2);
+
+        const rejectAttemptsVal = document.getElementById('rejectAttemptsVal_h');
+        if (rejectAttemptsVal) rejectAttemptsVal.textContent = v.config.maxRejectAttempts;
+
+        const particleCountVal = document.getElementById('particleCountVal_h');
+        if (particleCountVal) particleCountVal.textContent = v.numParticles;
+
+        const particleSizeVal = document.getElementById('particleSizeVal_h');
+        if (particleSizeVal) particleSizeVal.textContent = parseFloat(v.config.particleSize).toFixed(1);
+
+        const svgOptVal = document.getElementById('svgOptVal_h');
+        if (svgOptVal) {
+            const labels = { 1: 'Max Detail', 2: 'Balanced', 3: 'Aggressive', 4: 'Ultra Aggressive' };
+            svgOptVal.textContent = labels[v.config.svgOptimization] || v.config.svgOptimization;
+        }
+    },
+
+    _updateConstraints() {
+        const nSlider = document.getElementById('nSlider_h');
+        const lSlider = document.getElementById('lSlider_h');
+        const mSlider = document.getElementById('mSlider_h');
+
+        if (!nSlider || !lSlider || !mSlider) return;
+
+        const n = parseInt(nSlider.value);
+        lSlider.max = n - 1;
+        if (parseInt(lSlider.value) > n - 1) lSlider.value = n - 1;
+        const l = parseInt(lSlider.value);
+
+        mSlider.min = -l;
+        mSlider.max = l;
+        if (parseInt(mSlider.value) > l) mSlider.value = l;
+        if (parseInt(mSlider.value) < -l) mSlider.value = -l;
+
+        document.getElementById('nVal_h').textContent = n;
+        document.getElementById('lVal_h').textContent = l;
+        document.getElementById('mVal_h').textContent = parseInt(mSlider.value);
     },
 
     // Invia SOLO le chiavi che il motore attuale conosce davvero.
@@ -185,24 +255,8 @@ export default {
         const lSlider = document.getElementById('lSlider_h');
         const mSlider = document.getElementById('mSlider_h');
 
-        const updateConstraints = () => {
-            const n = parseInt(nSlider.value);
-            lSlider.max = n - 1;
-            if (parseInt(lSlider.value) > n - 1) lSlider.value = n - 1;
-            const l = parseInt(lSlider.value);
-
-            mSlider.min = -l;
-            mSlider.max = l;
-            if (parseInt(mSlider.value) > l) mSlider.value = l;
-            if (parseInt(mSlider.value) < -l) mSlider.value = -l;
-
-            document.getElementById('nVal_h').textContent = n;
-            document.getElementById('lVal_h').textContent = l;
-            document.getElementById('mVal_h').textContent = parseInt(mSlider.value);
-        };
-
         const onMathSliderInput = () => {
-            updateConstraints();
+            this._updateConstraints();
             const n = parseInt(nSlider.value);
             const l = parseInt(lSlider.value);
             const m = parseInt(mSlider.value);
@@ -222,9 +276,9 @@ export default {
                 const { n, l, m } = CLASSIC_ORBITAL_PRESETS[key];
                 nSlider.value = n;
                 lSlider.value = l;
-                updateConstraints();
+                this._updateConstraints();
                 mSlider.value = m;
-                updateConstraints();
+                this._updateConstraints();
                 v.updatePattern(n, l, m);
             });
         });

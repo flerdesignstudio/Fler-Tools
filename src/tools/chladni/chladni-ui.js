@@ -150,7 +150,95 @@ export default {
         const canvas = document.getElementById('visualizer');
         this._visualizer = new ChladniVisualizer(canvas);
 
+        this._syncUIToVisualizer();
         this._bindEvents();
+    },
+
+    _syncUIToVisualizer() {
+        const v = this._visualizer;
+        if (!v) return;
+
+        const inputsMap = {
+            'nSlider': v.pattern.n,
+            'mSlider': v.pattern.m,
+            'color1': v.config.particleColor1,
+            'color2': v.config.particleColor2,
+            'bgTrail': v.config.trailColor,
+            'bgGradStart': v.config.bgGradStart,
+            'bgGradEnd': v.config.bgGradEnd,
+            'particleCount': v.numParticles,
+            'particleSize': v.config.particleSize
+        };
+
+        for (const [id, val] of Object.entries(inputsMap)) {
+            const input = document.getElementById(id);
+            if (input) input.value = val;
+        }
+
+        const variantToggle = document.getElementById('variantToggle');
+        if (variantToggle) variantToggle.checked = v.pattern.v === 1;
+
+        const useGradient = document.getElementById('useGradient');
+        if (useGradient) useGradient.checked = v.config.useGradient;
+
+        const useBgGradient = document.getElementById('useBgGradient');
+        if (useBgGradient) useBgGradient.checked = v.config.useBgGradient;
+
+        const nVal = document.getElementById('nVal');
+        if (nVal) nVal.textContent = v.pattern.n;
+
+        const mVal = document.getElementById('mVal');
+        if (mVal) mVal.textContent = v.pattern.m;
+
+        const particleCountVal = document.getElementById('particleCountVal');
+        if (particleCountVal) particleCountVal.textContent = v.numParticles;
+
+        const particleSizeVal = document.getElementById('particleSizeVal');
+        if (particleSizeVal) particleSizeVal.textContent = v.config.particleSize;
+
+        const themeSelect = document.getElementById('themeSelect');
+        if (themeSelect) {
+            const themes = {
+                neon: { color1: '#39FF14', color2: '#00FFFF', trail: '#000a00', useGradient: true, bgGradStart: '#000000', bgGradEnd: '#1a1a2e', useBgGradient: false },
+                fire: { color1: '#FF4500', color2: '#FFD700', trail: '#1a0500', useGradient: true, bgGradStart: '#200500', bgGradEnd: '#501000', useBgGradient: true },
+                ocean: { color1: '#00BFFF', color2: '#7FFFD4', trail: '#001020', useGradient: true, bgGradStart: '#000510', bgGradEnd: '#002040', useBgGradient: true },
+                forest: { color1: '#228B22', color2: '#ADFF2F', trail: '#051a05', useGradient: true, bgGradStart: '#051005', bgGradEnd: '#102e10', useBgGradient: true }
+            };
+            
+            let matchedTheme = 'custom';
+            for (const [themeName, t] of Object.entries(themes)) {
+                if (t.color1.toLowerCase() === v.config.particleColor1.toLowerCase() &&
+                    t.color2.toLowerCase() === v.config.particleColor2.toLowerCase() &&
+                    t.trail.toLowerCase() === v.config.trailColor.toLowerCase() &&
+                    t.useGradient === v.config.useGradient &&
+                    t.bgGradStart.toLowerCase() === v.config.bgGradStart.toLowerCase() &&
+                    t.bgGradEnd.toLowerCase() === v.config.bgGradEnd.toLowerCase() &&
+                    t.useBgGradient === v.config.useBgGradient) {
+                    matchedTheme = themeName;
+                    break;
+                }
+            }
+            themeSelect.value = matchedTheme;
+        }
+
+        this._updateDisabledStates();
+    },
+
+    _updateDisabledStates() {
+        const color2 = document.getElementById('color2');
+        const bgGradStart = document.getElementById('bgGradStart');
+        const bgGradEnd = document.getElementById('bgGradEnd');
+        const bgTrail = document.getElementById('bgTrail');
+
+        if (!color2 || !bgGradStart || !bgGradEnd || !bgTrail) return;
+
+        const useGrad = document.getElementById('useGradient').checked;
+        const useBgGrad = document.getElementById('useBgGradient').checked;
+        
+        color2.closest('.color-item').classList.toggle('disabled', !useGrad);
+        bgGradStart.closest('.color-item').classList.toggle('disabled', !useBgGrad);
+        bgGradEnd.closest('.color-item').classList.toggle('disabled', !useBgGrad);
+        bgTrail.closest('.color-item').classList.toggle('disabled', useBgGrad);
     },
 
     _bindEvents() {
@@ -217,16 +305,6 @@ export default {
             forest: { color1: '#228B22', color2: '#ADFF2F', trail: '#051a05', useGradient: true, bgGradStart: '#051005', bgGradEnd: '#102e10', useBgGradient: true }
         };
 
-        const updateDisabledStates = () => {
-            const useGrad = document.getElementById('useGradient').checked;
-            const useBgGrad = document.getElementById('useBgGradient').checked;
-            
-            document.getElementById('color2').closest('.color-item').classList.toggle('disabled', !useGrad);
-            document.getElementById('bgGradStart').closest('.color-item').classList.toggle('disabled', !useBgGrad);
-            document.getElementById('bgGradEnd').closest('.color-item').classList.toggle('disabled', !useBgGrad);
-            document.getElementById('bgTrail').closest('.color-item').classList.toggle('disabled', useBgGrad);
-        };
-
         const updateVisualizerConfig = () => {
             v.updateConfig({
                 particleColor1: document.getElementById('color1').value,
@@ -237,11 +315,11 @@ export default {
                 bgGradEnd: document.getElementById('bgGradEnd').value,
                 useBgGradient: document.getElementById('useBgGradient').checked
             });
-            updateDisabledStates();
+            this._updateDisabledStates();
         };
 
         // Initial setup of disabled states
-        updateDisabledStates();
+        this._updateDisabledStates();
 
         this._addListener('themeSelect', 'change', (e) => {
             const t = themes[e.target.value];

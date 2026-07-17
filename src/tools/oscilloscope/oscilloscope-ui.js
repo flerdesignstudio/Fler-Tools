@@ -164,7 +164,82 @@ export default {
         const canvas = document.getElementById('oscVisualizer');
         this._visualizer = new OscilloscopeVisualizer(canvas);
 
+        this._syncUIToVisualizer();
         this._bindEvents();
+    },
+
+    _syncUIToVisualizer() {
+        const v = this._visualizer;
+        if (!v) return;
+
+        const configMap = {
+            'oscFreqMode': v.config.freqMode,
+            'oscFreqX': v.config.freqX,
+            'oscFreqY': v.config.freqY,
+            'oscAmpX': v.config.ampX,
+            'oscAmpY': v.config.ampY,
+            'oscPhase': v.config.phase,
+            'oscSpeed': v.config.speed,
+            'oscColor1': v.config.particleColor1,
+            'oscColor2': v.config.particleColor2,
+            'oscBgTrail': v.config.trailColor,
+            'oscParticleCount': v.numParticles,
+            'oscParticleSize': v.config.particleSize
+        };
+
+        for (const [id, val] of Object.entries(configMap)) {
+            const input = document.getElementById(id);
+            if (input) input.value = val;
+        }
+
+        const useGrad = document.getElementById('oscUseGradient');
+        if (useGrad) useGrad.checked = v.config.useGradient;
+
+        const labelMap = {
+            'oscFreqXVal': v.config.freqX,
+            'oscFreqYVal': v.config.freqY,
+            'oscAmpXVal': v.config.ampX,
+            'oscAmpYVal': v.config.ampY,
+            'oscPhaseVal': v.config.phase,
+            'oscSpeedVal': v.config.speed,
+            'oscParticleCountVal': v.numParticles,
+            'oscParticleSizeVal': v.config.particleSize
+        };
+
+        for (const [id, val] of Object.entries(labelMap)) {
+            const label = document.getElementById(id);
+            if (label) label.textContent = val;
+        }
+
+        const themeSelect = document.getElementById('oscThemeSelect');
+        if (themeSelect) {
+            const themes = {
+                classic: { color1: '#39FF14', color2: '#39FF14', trail: '#000000', useGradient: false },
+                neon: { color1: '#00FFFF', color2: '#0088FF', trail: '#000510', useGradient: true },
+                warm: { color1: '#FF9900', color2: '#FF3300', trail: '#110500', useGradient: true }
+            };
+            
+            let matchedTheme = 'custom';
+            for (const [themeName, t] of Object.entries(themes)) {
+                if (t.color1.toLowerCase() === v.config.particleColor1.toLowerCase() &&
+                    t.color2.toLowerCase() === v.config.particleColor2.toLowerCase() &&
+                    t.trail.toLowerCase() === v.config.trailColor.toLowerCase() &&
+                    t.useGradient === v.config.useGradient) {
+                    matchedTheme = themeName;
+                    break;
+                }
+            }
+            themeSelect.value = matchedTheme;
+        }
+
+        this._updateDisabledStates();
+    },
+
+    _updateDisabledStates() {
+        const color2 = document.getElementById('oscColor2');
+        if (!color2) return;
+        const useGrad = document.getElementById('oscUseGradient').checked;
+        color2.closest('.color-item').classList.toggle('disabled', !useGrad);
     },
 
     _bindEvents() {
@@ -218,11 +293,6 @@ export default {
             warm: { color1: '#FF9900', color2: '#FF3300', trail: '#110500', useGradient: true }
         };
 
-        const updateDisabledStates = () => {
-            const useGrad = document.getElementById('oscUseGradient').checked;
-            document.getElementById('oscColor2').closest('.color-item').classList.toggle('disabled', !useGrad);
-        };
-
         const updateVisualizerColors = () => {
             v.updateConfig({
                 particleColor1: document.getElementById('oscColor1').value,
@@ -230,11 +300,11 @@ export default {
                 trailColor: document.getElementById('oscBgTrail').value,
                 useGradient: document.getElementById('oscUseGradient').checked
             });
-            updateDisabledStates();
+            this._updateDisabledStates();
         };
 
         // Initial setup
-        updateDisabledStates();
+        this._updateDisabledStates();
 
         this._addListener('oscThemeSelect', 'change', (e) => {
             const t = themes[e.target.value];
