@@ -10,7 +10,9 @@ export class CellsVisualizer {
         // Customization State
         this.config = {
             cellColor: '#191919',
-            bgColor: '#39FF14'
+            bgColor: '#39FF14',
+            drawMode: 'fill',
+            strokeWidth: 2
         };
 
         this.aspectRatio = '1:1';
@@ -239,7 +241,13 @@ export class CellsVisualizer {
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
         // Draw cells
-        this.ctx.fillStyle = this.config.cellColor;
+        if (this.config.drawMode === 'fill') {
+            this.ctx.fillStyle = this.config.cellColor;
+        } else {
+            this.ctx.strokeStyle = this.config.cellColor;
+            this.ctx.lineWidth = this.config.strokeWidth;
+            this.ctx.lineJoin = 'round';
+        }
 
         for (let cell of this.cells) {
             if (cell.length === 0) continue;
@@ -249,7 +257,12 @@ export class CellsVisualizer {
                 this.ctx.lineTo(cell[i].x, cell[i].y);
             }
             this.ctx.closePath();
-            this.ctx.fill();
+            
+            if (this.config.drawMode === 'fill') {
+                this.ctx.fill();
+            } else {
+                this.ctx.stroke();
+            }
         }
     }
 
@@ -272,7 +285,11 @@ export class CellsVisualizer {
             pathData += `Z `;
         }
 
-        svgContent += `  <path d="${pathData.trim()}" fill="${this.config.cellColor}" />\n`;
+        if (this.config.drawMode === 'fill') {
+            svgContent += `  <path d="${pathData.trim()}" fill="${this.config.cellColor}" />\n`;
+        } else {
+            svgContent += `  <path d="${pathData.trim()}" fill="none" stroke="${this.config.cellColor}" stroke-width="${this.config.strokeWidth}" stroke-linejoin="round" />\n`;
+        }
 
         svgContent += `</svg>`;
         return svgContent;

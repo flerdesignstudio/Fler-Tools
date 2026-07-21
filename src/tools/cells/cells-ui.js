@@ -60,6 +60,19 @@ export default {
             <hr class="separator" />
             <section class="control-group">
                 <h2 class="group-title">Visuals & Colors</h2>
+                <div class="segmented-switch" style="margin-bottom: 16px;">
+                    <input type="radio" id="drawModeFill" name="drawMode" value="fill" checked>
+                    <label for="drawModeFill">Fill</label>
+                    <input type="radio" id="drawModeStroke" name="drawMode" value="stroke">
+                    <label for="drawModeStroke">Stroke</label>
+                </div>
+                <div class="slider-row" id="strokeWidthRow" style="opacity: 0.5; pointer-events: none;">
+                    <div class="slider-header">
+                        <label for="strokeWidth">Stroke Width</label>
+                        <span id="strokeWidthVal" aria-live="polite">2</span>
+                    </div>
+                    <input type="range" id="strokeWidth" min="1" max="20" step="1" value="2" class="notion-slider">
+                </div>
                 <div class="color-grid">
                     <div class="color-item">
                         <label for="cellColor">Cell Color</label>
@@ -176,14 +189,16 @@ export default {
             cellSmoothness: document.getElementById('cellSmoothness'),
             canvasMargin: document.getElementById('canvasMargin'),
             cellColor: document.getElementById('cellColor'),
-            bgColor: document.getElementById('bgColor')
+            bgColor: document.getElementById('bgColor'),
+            strokeWidth: document.getElementById('strokeWidth')
         };
         this._controlVals = {
             cellCount: document.getElementById('cellCountVal'),
             cellGap: document.getElementById('cellGapVal'),
             junctionGap: document.getElementById('junctionGapVal'),
             cellSmoothness: document.getElementById('cellSmoothnessVal'),
-            canvasMargin: document.getElementById('canvasMarginVal')
+            canvasMargin: document.getElementById('canvasMarginVal'),
+            strokeWidth: document.getElementById('strokeWidthVal')
         };
 
         // Sync UI inputs with visualizer defaults
@@ -217,6 +232,27 @@ export default {
 
         const bgColor = this._controls.bgColor;
         if (bgColor) bgColor.value = v.config.bgColor;
+
+        const strokeWidthInput = this._controls.strokeWidth;
+        const strokeWidthVal = this._controlVals.strokeWidth;
+        if (strokeWidthInput) strokeWidthInput.value = v.config.strokeWidth;
+        if (strokeWidthVal) strokeWidthVal.textContent = v.config.strokeWidth;
+
+        const fillRadio = document.getElementById('drawModeFill');
+        const strokeRadio = document.getElementById('drawModeStroke');
+        if (v.config.drawMode === 'stroke' && strokeRadio) strokeRadio.checked = true;
+        else if (fillRadio) fillRadio.checked = true;
+
+        const strokeWidthRow = document.getElementById('strokeWidthRow');
+        if (strokeWidthRow) {
+            if (v.config.drawMode === 'stroke') {
+                strokeWidthRow.style.opacity = '1';
+                strokeWidthRow.style.pointerEvents = 'auto';
+            } else {
+                strokeWidthRow.style.opacity = '0.5';
+                strokeWidthRow.style.pointerEvents = 'none';
+            }
+        }
     },
 
     _bindEvents() {
@@ -263,10 +299,26 @@ export default {
         const updateVisualizerConfig = () => {
             if (rafId) cancelAnimationFrame(rafId);
             rafId = requestAnimationFrame(() => {
+                const drawModeNode = document.querySelector('input[name="drawMode"]:checked');
+                const drawMode = drawModeNode ? drawModeNode.value : 'fill';
+
                 v.updateConfig({
                     cellColor: this._controls.cellColor.value,
-                    bgColor: this._controls.bgColor.value
+                    bgColor: this._controls.bgColor.value,
+                    drawMode: drawMode,
+                    strokeWidth: parseInt(this._controls.strokeWidth.value)
                 });
+
+                const strokeWidthRow = document.getElementById('strokeWidthRow');
+                if (strokeWidthRow) {
+                    if (drawMode === 'stroke') {
+                        strokeWidthRow.style.opacity = '1';
+                        strokeWidthRow.style.pointerEvents = 'auto';
+                    } else {
+                        strokeWidthRow.style.opacity = '0.5';
+                        strokeWidthRow.style.pointerEvents = 'none';
+                    }
+                }
                 rafId = null;
             });
         };
@@ -275,6 +327,15 @@ export default {
             this._addListener(id, 'input', () => {
                 updateVisualizerConfig();
             });
+        });
+
+        this._addListener('strokeWidth', 'input', (e) => {
+            this._controlVals['strokeWidth'].textContent = e.target.value;
+            updateVisualizerConfig();
+        });
+
+        ['drawModeFill', 'drawModeStroke'].forEach(id => {
+            this._addListener(id, 'change', () => updateVisualizerConfig());
         });
 
         this._addListener('cellsResetView', 'click', () => {

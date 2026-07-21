@@ -236,15 +236,6 @@ export class DitherVisualizer {
         this.ctx.putImageData(imageData, 0, 0);
     }
 
-    // Diffusion algorithms scatter noise pixel-by-pixel — the run-length SVG export
-    // below degenerates to roughly one <rect> per pixel for these, which can produce
-    // multi-million-node files. The UI should warn before calling exportToSVG in this case.
-    isSvgExportRisky() {
-        return this.config.algorithm === 'floyd-steinberg'
-            || this.config.algorithm === 'atkinson'
-            || this.config.algorithm === 'random';
-    }
-
     exportToPNG(filename) {
         const url = this.canvas.toDataURL('image/png');
         const a = document.createElement('a');
@@ -253,59 +244,6 @@ export class DitherVisualizer {
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-    }
-
-    exportToSVG(filename) {
-        const width = this.canvas.width;
-        const height = this.canvas.height;
-        if (width === 0 || height === 0) return;
-
-        const imageData = this.ctx.getImageData(0, 0, width, height);
-        const pixels = imageData.data;
-
-        const paletteRGB = this._getPaletteColors();
-        const bgColor = paletteRGB[0]; // Assuming first color is background
-        const bgHex = `#${bgColor[0].toString(16).padStart(2, '0')}${bgColor[1].toString(16).padStart(2, '0')}${bgColor[2].toString(16).padStart(2, '0')}`;
-
-        let svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}">\n`;
-
-        // Paint the background explicitly — never rely on a viewer's default canvas
-        // color. Skipping same-color runs below is now a real optimization on top
-        // of a correct base layer, not a silent assumption that could invert the image.
-        svgContent += `<rect width="100%" height="100%" fill="${bgHex}"/>\n`;
-
-        for (let y = 0; y < height; y++) {
-            let currentRunColor = null;
-            let runStartX = 0;
-            let runLength = 0;
-
-            const pushRun = () => {
-                if (runLength > 0 && currentRunColor !== bgHex) {
-                    svgContent += `<rect x="${runStartX}" y="${y}" width="${runLength}" height="1" fill="${currentRunColor}" />\n`;
-                }
-            };
-
-            for (let x = 0; x < width; x++) {
-                const idx = (y * width + x) * 4;
-                const r = pixels[idx];
-                const g = pixels[idx + 1];
-                const b = pixels[idx + 2];
-                const hex = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
-
-                if (hex === currentRunColor) {
-                    runLength++;
-                } else {
-                    pushRun();
-                    currentRunColor = hex;
-                    runStartX = x;
-                    runLength = 1;
-                }
-            }
-            pushRun();
-        }
-        svgContent += `</svg>`;
-
-        return svgContent;
     }
 
     destroy() {

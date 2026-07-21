@@ -100,7 +100,7 @@ export class HydrogenVisualizer {
         this.maxAccumulateFrames = 150;
 
         this.config = {
-            bgColor: '#FFFFFF',
+            bgColor: '#000000',
             particleSize: 0.7,
             particleAlpha: 0.65,
 
@@ -112,8 +112,8 @@ export class HydrogenVisualizer {
 
             accumulate: true,
 
-            posColor: '#000000',
-            negColor: '#FF0000',
+            posColor: '#39FF14',
+            negColor: '#8800ffff',
 
             rotateColors: false,
             rotationSpeed: 0.5,
@@ -363,7 +363,7 @@ export class HydrogenVisualizer {
                 p.x = s.x;
                 p.y = s.y;
                 p.psi = s.psi;
-                
+
                 if (this.config.accumulate) {
                     this.accumulatedParticles.push({ ...p });
                 }
@@ -377,7 +377,7 @@ export class HydrogenVisualizer {
 
         if (this.config.accumulate) {
             if (this.accumulatedFrames >= this.maxAccumulateFrames) return;
-            
+
             if (this.needsClear) {
                 this.ctx.fillStyle = this.config.bgColor;
                 this.ctx.fillRect(0, 0, w, h);
@@ -463,13 +463,13 @@ export class HydrogenVisualizer {
         const r = this.config.particleSize;
         const optLevels = { 1: 1.0, 2: 2.0, 3: 3.5, 4: 6.0 };
         const optScale = optLevels[this.config.svgOptimization || 3];
-        
+
         const targetPts = this.config.accumulate ? this.accumulatedParticles : this.particles;
 
         // 1. Spatial Binning to eliminate overdraw
         const cellSize = Math.max(1, r * 1.5 * optScale);
         const exportRadius = r * Math.sqrt(optScale);
-        
+
         const getCellKey = (x, y) => `${Math.floor(x / cellSize)}_${Math.floor(y / cellSize)}`;
 
         const binsPos = new Map();

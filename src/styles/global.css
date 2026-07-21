@@ -426,6 +426,69 @@ body::before {
     box-shadow: 0 0 0 3px var(--accent-dim), 0 2px 8px rgba(0, 0, 0, 0.6);
 }
 
+/* ── Segmented Switch ────────────────────────────── */
+.segmented-switch {
+    display: flex;
+    align-items: center;
+    position: relative;
+    width: 100%;
+}
+
+.segmented-switch input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.segmented-switch label {
+    flex: 1 0 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 16px;
+    font-size: 13px;
+    min-height: 32px;
+    font-weight: 500;
+    cursor: pointer;
+    background: var(--bg-button);
+    border: 1px solid var(--border-default);
+    color: var(--text-secondary);
+    transition: background-color var(--dur-fast), color var(--dur-fast), border-color var(--dur-fast);
+    position: relative;
+    min-width: 1px;
+}
+
+.segmented-switch label:first-of-type {
+    border-top-left-radius: 10px;
+    border-bottom-left-radius: 10px;
+    margin-right: -1px;
+}
+
+.segmented-switch label:last-of-type {
+    border-top-right-radius: 10px;
+    border-bottom-right-radius: 10px;
+}
+
+.segmented-switch input[type="radio"]:checked + label {
+    background: var(--bg-button-active);
+    border-color: var(--bg-button-active);
+    color: var(--text-active);
+    z-index: 1;
+}
+
+.segmented-switch input[type="radio"]:focus-visible + label {
+    box-shadow: var(--focus-ring);
+    z-index: 2;
+}
+
+.segmented-switch label:hover {
+    background: var(--bg-button-hover);
+}
+
+.segmented-switch input[type="radio"]:checked + label:hover {
+    background: var(--bg-button-active);
+}
+
 /* ── Toggles ─────────────────────────────────────── */
 .toggle-row {
     display: flex;
@@ -433,15 +496,12 @@ body::before {
     gap: 9px;
     cursor: pointer;
     font-size: 13px;
-    /* was 12px */
     font-weight: 500;
-    color: var(--text-secondary);
+    color: var(--text-muted);
     padding: 6px 8px;
-    /* slightly taller for touch target */
     border-radius: var(--radius-sm);
     transition: background var(--dur-fast) var(--ease-standard);
     min-height: 36px;
-    /* ensures adequate touch target height */
 }
 
 .toggle-row:hover {
@@ -450,17 +510,16 @@ body::before {
 
 .notion-checkbox {
     appearance: none;
-    width: 15px;
-    /* was 13px */
-    height: 15px;
-    border: 1px solid var(--border-strong);
+    width: 16px;
+    height: 16px;
+    border: 1px solid var(--border-default);
     border-radius: 3px;
     display: grid;
     place-content: center;
     cursor: pointer;
     transition: all var(--dur-fast) var(--ease-standard);
     flex-shrink: 0;
-    background: var(--glass-subtle);
+    background: var(--bg-button);
 }
 
 .notion-checkbox:focus-visible {
@@ -470,17 +529,17 @@ body::before {
 
 .notion-checkbox::before {
     content: "";
-    width: 8px;
-    height: 8px;
+    width: 9px;
+    height: 9px;
     transform: scale(0);
     transition: transform var(--dur-fast) var(--ease-entrance);
-    background-color: var(--bg-base);
+    background-color: var(--text-active);
     clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
 }
 
 .notion-checkbox:checked {
-    background-color: var(--text-primary);
-    border-color: var(--text-primary);
+    background-color: var(--bg-button-active);
+    border-color: var(--bg-button-active);
 }
 
 .notion-checkbox:checked::before {
@@ -635,6 +694,14 @@ input[type="color"]::-moz-color-swatch {
     color: var(--text-active);
     font-weight: 600;
     border-color: transparent;
+}
+
+.notion-btn:disabled, .notion-btn.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+    background: var(--bg-button);
+    color: var(--text-muted);
 }
 
 /* Legacy secondary and primary overrides */

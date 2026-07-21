@@ -6,6 +6,7 @@ import oscilloscopeTool from './tools/oscilloscope/oscilloscope-ui.js';
 import asciiTool from './tools/ascii/ascii-ui.js';
 import ditherTool from './tools/dither/dither-ui.js';
 import cellsTool from './tools/cells/cells-ui.js';
+import thermalTool from './tools/thermal/thermal-ui.js';
 
 // Inizializza Vercel Speed Insights e Web Analytics
 injectSpeedInsights();
@@ -18,7 +19,8 @@ export const tools = {
     [oscilloscopeTool.id]: oscilloscopeTool,
     [asciiTool.id]: asciiTool,
     [ditherTool.id]: ditherTool,
-    [cellsTool.id]: cellsTool
+    [cellsTool.id]: cellsTool,
+    [thermalTool.id]: thermalTool
 };
 
 import { animate } from 'motion';
@@ -131,7 +133,17 @@ export const loadTool = async (toolId) => {
     if (tool.init) {
         tool.init(sidebarContainer, mainContainer);
     }
+    
+    // 3. Update export buttons state
+    updateExportButtonsState();
 };
+
+function updateExportButtonsState() {
+    const exportSvgBtn = document.getElementById('exportSvgBtn');
+    if (exportSvgBtn) {
+        exportSvgBtn.disabled = !(currentTool && currentTool._visualizer && typeof currentTool._visualizer.exportToSVG === 'function');
+    }
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     const toolsArray = Object.values(tools);
@@ -204,10 +216,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('exportSvgBtn').addEventListener('click', () => {
         if (currentTool && currentTool._visualizer && currentTool._visualizer.exportToSVG) {
-            if (currentTool._visualizer.isSvgExportRisky && currentTool._visualizer.isSvgExportRisky()) {
-                const proceed = confirm("Warning: Exporting a diffusion dither to SVG can create a massive file (millions of nodes) that might freeze your browser or design tools. Proceed anyway?");
-                if (!proceed) return;
-            }
             const svgString = currentTool._visualizer.exportToSVG();
             const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
             const url = URL.createObjectURL(blob);

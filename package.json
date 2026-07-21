@@ -21,6 +21,7 @@
   },
   "homepage": "https://github.com/flerdesignstudio/Graphic-Tools#readme",
   "devDependencies": {
+    "jsdom": "^29.1.1",
     "vite": "^8.0.9"
   },
   "dependencies": {
