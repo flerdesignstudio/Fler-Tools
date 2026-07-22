@@ -1,4 +1,4 @@
-# Graphic-Tools
+# Fler Tools
 
 <p align="center">
   <img src="src/Assets/Fler_Logo.svg" alt="Fler Logo" width="64" height="64"><br>
@@ -7,12 +7,13 @@
 
 ## What the project does
 
-**Graphic-Tools** is a web-based suite of generative and visual tools designed for artists, designers, and developers. Built by Fler Design Studio, it provides interactive, high-performance web interfaces to explore mathematical and physical phenomena graphically.
+**Fler Tools** is a web-based suite of generative and visual tools designed for artists, designers, and developers. Built by Fler Design Studio, it provides interactive, high-performance web interfaces to explore mathematical and physical phenomena graphically.
 
 Current tools include:
 - **Chladni Plate Simulator**: Visualize Chladni resonance patterns.
 - **Hydrogen Orbitals**: Explore atomic orbital shapes.
 - **Oscilloscope**: Visualize waveforms and frequencies.
+- and many more...
 
 Features:
 - Real-time parameter tweaking.
