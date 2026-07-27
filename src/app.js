@@ -7,6 +7,7 @@ import asciiTool from './tools/ascii/ascii-ui.js';
 import ditherTool from './tools/dither/dither-ui.js';
 import cellsTool from './tools/cells/cells-ui.js';
 import thermalTool from './tools/thermal/thermal-ui.js';
+import matrixTool from './tools/matrix/matrix-ui.js';
 
 // Inizializza Vercel Speed Insights e Web Analytics
 injectSpeedInsights();
@@ -20,7 +21,8 @@ export const tools = {
     [asciiTool.id]: asciiTool,
     [ditherTool.id]: ditherTool,
     [cellsTool.id]: cellsTool,
-    [thermalTool.id]: thermalTool
+    [thermalTool.id]: thermalTool,
+    [matrixTool.id]: matrixTool
 };
 
 import { animate } from 'motion';
@@ -236,7 +238,7 @@ document.addEventListener('DOMContentLoaded', () => {
             currentTool._visualizer.exportToPNG(`${currentTool.id}-export.png`);
         } else {
             // Fallback to directly capturing the canvas
-            const canvas = document.getElementById('visualizer') || document.getElementById('hydrogen_visualizer') || document.getElementById('oscVisualizer');
+            const canvas = document.getElementById('visualizer') || document.getElementById('hydrogen_visualizer') || document.getElementById('oscVisualizer') || document.getElementById('matrixCanvas');
             if (canvas) {
                 const url = canvas.toDataURL('image/png');
                 const a = document.createElement('a');

@@ -766,7 +766,8 @@ input[type="color"]::-moz-color-swatch {
 #hydrogen_visualizer,
 #oscVisualizer,
 #asciiCanvas,
-#cells_visualizer {
+#cells_visualizer,
+#matrixCanvas {
     display: block;
     max-width: 90%;
     max-height: 90%;
