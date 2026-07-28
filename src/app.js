@@ -216,9 +216,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    document.getElementById('exportSvgBtn').addEventListener('click', () => {
+    document.getElementById('exportSvgBtn').addEventListener('click', async () => {
         if (currentTool && currentTool._visualizer && currentTool._visualizer.exportToSVG) {
-            const svgString = currentTool._visualizer.exportToSVG();
+            const svgString = await currentTool._visualizer.exportToSVG();
+            if (!svgString) return;
+            
             const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');

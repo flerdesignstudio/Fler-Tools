@@ -704,21 +704,33 @@ input[type="color"]::-moz-color-swatch {
     color: var(--text-muted);
 }
 
-/* Legacy secondary and primary overrides */
+/* ── Button Variants ─────────────────────────────── */
 .notion-btn-secondary {
-    /* uses standard notion-btn styles */
+    /* Uses standard notion-btn styles (bg, border, hover) */
+}
+
+.notion-btn-tertiary {
+    background: transparent;
+    border-color: transparent;
+    color: var(--text-secondary);
+}
+
+.notion-btn-tertiary:hover {
+    background: var(--bg-button);
+    border-color: var(--border-default);
+    color: var(--text-primary);
 }
 
 .notion-btn-primary {
-    background: var(--text-primary);
-    color: #0d0d0d;
-    border: 1px solid transparent;
+    background: var(--bg-button);
+    color: var(--text-primary);
+    border: 1px solid var(--border-strong);
     font-weight: 600;
 }
 
 .notion-btn-primary:hover {
-    background: #ffffff;
-    box-shadow: 0 0 16px rgba(255, 255, 255, 0.12);
+    background: var(--bg-button-hover);
+    box-shadow: 0 0 12px rgba(255, 255, 255, 0.05);
 }
 
 /* ── Status Msg ──────────────────────────────────── */

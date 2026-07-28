@@ -55,6 +55,101 @@ export class MatrixVisualizer {
         return new Path2D();
     }
 
+    static normalizeCustomSvg(svgStr) {
+        return new Promise((resolve) => {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(svgStr, 'image/svg+xml');
+            const svgEl = doc.querySelector('svg');
+
+            if (!svgEl) {
+                resolve({ rawSvg: svgStr, path2D: new Path2D() });
+                return;
+            }
+
+            const circle = svgEl.querySelector('circle');
+            const rect = svgEl.querySelector('rect');
+            const polygon = svgEl.querySelector('polygon');
+            const path = svgEl.querySelector('path');
+
+            let pathD = "";
+            let targetEl = null;
+
+            if (circle) {
+                const cx = parseFloat(circle.getAttribute('cx') || 0);
+                const cy = parseFloat(circle.getAttribute('cy') || 0);
+                const r = parseFloat(circle.getAttribute('r') || 0);
+                pathD = `M ${cx - r},${cy} a ${r},${r} 0 1,0 ${r * 2},0 a ${r},${r} 0 1,0 -${r * 2},0`;
+                targetEl = circle;
+            } else if (rect) {
+                const x = parseFloat(rect.getAttribute('x') || 0);
+                const y = parseFloat(rect.getAttribute('y') || 0);
+                const w = parseFloat(rect.getAttribute('width') || 0);
+                const h = parseFloat(rect.getAttribute('height') || 0);
+                pathD = `M ${x},${y} h ${w} v ${h} h -${w} Z`;
+                targetEl = rect;
+            } else if (polygon) {
+                const points = (polygon.getAttribute('points') || '').trim().split(/[\s,]+/);
+                const validPoints = [];
+                for (let i = 0; i < points.length; i += 2) {
+                    if (points[i] !== undefined && points[i + 1] !== undefined && points[i] !== "") {
+                        validPoints.push(`${points[i]},${points[i + 1]}`);
+                    }
+                }
+                pathD = `M ${validPoints.join(' L ')} Z`;
+                targetEl = polygon;
+            } else if (path) {
+                pathD = path.getAttribute('d') || '';
+                targetEl = path;
+            }
+
+            if (!targetEl || !pathD) {
+                resolve({ rawSvg: svgStr, path2D: new Path2D() });
+                return;
+            }
+
+            // Temporarily append to DOM to get exact bounds
+            svgEl.style.position = 'absolute';
+            svgEl.style.visibility = 'hidden';
+            svgEl.style.width = '100px';
+            svgEl.style.height = '100px';
+            document.body.appendChild(svgEl);
+
+            let bbox = { x: 0, y: 0, width: 100, height: 100 };
+            try {
+                bbox = targetEl.getBBox();
+            } catch (e) {
+                console.warn('Could not get BBox for custom SVG', e);
+            }
+
+            document.body.removeChild(svgEl);
+
+            const originalPath = new Path2D(pathD);
+
+            if (bbox.width === 0 || bbox.height === 0) {
+                resolve({ rawSvg: svgStr, path2D: originalPath });
+                return;
+            }
+
+            // Target 100x100 box, leave a tiny 4px padding so it doesn't touch the absolute edge
+            const scale = 92 / Math.max(bbox.width, bbox.height);
+            const cx = bbox.x + bbox.width / 2;
+            const cy = bbox.y + bbox.height / 2;
+
+            const matrix = new DOMMatrix();
+            matrix.translateSelf(50, 50);
+            matrix.scaleSelf(scale, scale);
+            matrix.translateSelf(-cx, -cy);
+
+            const normalizedPath = new Path2D();
+            normalizedPath.addPath(originalPath, matrix);
+
+            // Create a normalized SVG string so the UI preview scales correctly
+            const newRawSvg = `<svg viewBox="0 0 100 100"><g transform="translate(50,50) scale(${scale}) translate(${-cx},${-cy})" fill="currentColor"><path d="${pathD}" /></g></svg>`;
+
+            resolve({ rawSvg: newRawSvg, path2D: normalizedPath });
+        });
+    }
+
     constructor(canvas) {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
@@ -140,9 +235,11 @@ export class MatrixVisualizer {
             const reader = new FileReader();
             reader.onload = (e) => {
                 const content = e.target.result;
-                this.loadedPaths[index] = { rawSvg: content, path2D: MatrixVisualizer.parseSvgToPath2D(content) };
-                this.triggerRender();
-                resolve(this.loadedPaths[index]);
+                MatrixVisualizer.normalizeCustomSvg(content).then(normalized => {
+                    this.loadedPaths[index] = normalized;
+                    this.triggerRender();
+                    resolve(this.loadedPaths[index]);
+                });
             };
             reader.onerror = reject;
             reader.readAsText(file);
@@ -352,9 +449,186 @@ export class MatrixVisualizer {
     }
 
     // --- Export -------------------------------------------------------------
-    // PNG/video export is handled by the global app-level export bar, which
-    // calls into `isExportUpscalingOverride` + `_processFrame` directly (or
-    // an equivalent frame-capture hook it owns). No local export API here.
+
+    async _showWarningModal(message) {
+        return new Promise((resolve) => {
+            const overlay = document.createElement('div');
+            overlay.className = 'tools-modal-overlay active';
+            overlay.style.zIndex = '9999';
+            overlay.style.alignItems = 'center'; // Center vertically
+
+            const modalContent = document.createElement('div');
+            modalContent.className = 'tools-modal-content panel';
+            modalContent.style.maxWidth = '400px';
+            modalContent.style.padding = '24px';
+
+            const header = document.createElement('div');
+            header.className = 'tools-modal-header';
+            header.style.marginBottom = '16px';
+
+            const title = document.createElement('h2');
+            title.textContent = 'Large export warning';
+
+            const closeBtn = document.createElement('button');
+            closeBtn.className = 'notion-btn notion-btn-secondary close-modal-btn';
+            closeBtn.innerHTML = '<span class="material-symbols-outlined">close</span>';
+
+            header.appendChild(title);
+            header.appendChild(closeBtn);
+
+            const body = document.createElement('div');
+            body.className = 'info-modal-body';
+            body.style.fontSize = '14px';
+            body.style.color = 'var(--text-secondary)';
+            body.style.lineHeight = '1.6';
+            body.style.marginBottom = '24px';
+            body.textContent = message;
+
+            const buttonRow = document.createElement('div');
+            buttonRow.style.display = 'flex';
+            buttonRow.style.gap = '12px';
+            buttonRow.style.justifyContent = 'flex-end';
+
+            const cancelBtn = document.createElement('button');
+            cancelBtn.className = 'notion-btn notion-btn-tertiary';
+            cancelBtn.textContent = 'Cancel';
+
+            const proceedBtn = document.createElement('button');
+            proceedBtn.className = 'notion-btn notion-btn-primary';
+            proceedBtn.textContent = 'Proceed';
+
+            buttonRow.appendChild(cancelBtn);
+            buttonRow.appendChild(proceedBtn);
+
+            modalContent.appendChild(header);
+            modalContent.appendChild(body);
+            modalContent.appendChild(buttonRow);
+            overlay.appendChild(modalContent);
+            document.body.appendChild(overlay);
+
+            const cleanup = () => {
+                document.body.removeChild(overlay);
+            };
+
+            const cancel = () => { cleanup(); resolve(false); };
+            const proceed = () => { cleanup(); resolve(true); };
+
+            closeBtn.onclick = cancel;
+            cancelBtn.onclick = cancel;
+            overlay.onclick = (e) => { if (e.target === overlay) cancel(); };
+            proceedBtn.onclick = proceed;
+        });
+    }
+
+    async exportToSVG() {
+        if (!this.mediaType || !this.activeImage) return null;
+
+        const sw = this.activeImage.width, sh = this.activeImage.height;
+        const aspectRatio = this.config.aspectRatio;
+
+        let tw = sw, th = sh;
+        if (aspectRatio === 'square') { tw = Math.min(sw, sh); th = tw; }
+
+        let cell = this.config.gridSize;
+
+        const cols = Math.ceil(tw / cell);
+        const rows = Math.ceil(th / cell);
+        const estimatedShapes = cols * rows;
+
+        if (estimatedShapes > 8000) {
+            const proceed = await this._showWarningModal(`This export will generate an SVG with approximately ${estimatedShapes} shapes. The file may be very heavy and could take a while to render or open in design software. Do you want to proceed?`);
+            if (!proceed) return null;
+        }
+
+        let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${tw} ${th}" width="${tw}" height="${th}">\n`;
+        svg += `<rect width="100%" height="100%" fill="${this.config.bgColor}"/>\n`;
+
+        const sxOffset = (aspectRatio === 'square') ? (sw - Math.min(sw, sh)) / 2 : 0;
+        const syOffset = (aspectRatio === 'square') ? (sh - Math.min(sw, sh)) / 2 : 0;
+        const swSrc = (aspectRatio === 'square') ? Math.min(sw, sh) : sw;
+        const shSrc = (aspectRatio === 'square') ? Math.min(sw, sh) : sh;
+
+        if (this._processingCanvas.width !== tw || this._processingCanvas.height !== th) {
+            this._processingCanvas.width = tw;
+            this._processingCanvas.height = th;
+        }
+        this._processingCtx.clearRect(0, 0, tw, th);
+        this._processingCtx.drawImage(this._sourceCanvas, sxOffset, syOffset, swSrc, shSrc, 0, 0, tw, th);
+
+        const imgData = this._processingCtx.getImageData(0, 0, tw, th);
+        const pixels = imgData.data;
+
+        const activeColors = this.getActiveColors();
+        const activeColorsRgb = activeColors.map(hexToRgb);
+        const totalSteps = this.matrixSize;
+        const pad = Math.min(0.4, Math.max(0, this.config.cellPadding ?? 0));
+
+        let gridCol = 0;
+        for (let y = 0; y < th; y += cell, gridCol = 0) {
+            let gridRow = Math.floor(y / cell);
+            for (let x = 0; x < tw; x += cell, gridCol++) {
+                let totalLuma = 0, count = 0;
+                let sumR = 0, sumG = 0, sumB = 0;
+
+                for (let cy = 0; cy < cell && (y + cy) < th; cy++) {
+                    for (let cx = 0; cx < cell && (x + cx) < tw; cx++) {
+                        const pxIndex = ((y + cy) * tw + (x + cx)) * 4;
+                        if (pxIndex < pixels.length) {
+                            const r = pixels[pxIndex], g = pixels[pxIndex + 1], b = pixels[pxIndex + 2];
+                            totalLuma += 0.299 * r + 0.587 * g + 0.114 * b;
+                            sumR += r; sumG += g; sumB += b;
+                            count++;
+                        }
+                    }
+                }
+
+                if (count === 0) continue;
+                let avgLuma = totalLuma / count;
+                if (this.config.invert) avgLuma = 255 - avgLuma;
+
+                let stepIndex = Math.floor((avgLuma / 255) * totalSteps);
+                if (stepIndex > totalSteps - 1) stepIndex = totalSteps - 1;
+                if (stepIndex < 0) stepIndex = 0;
+
+                const t = avgLuma / 255;
+                let computedScale = this.config.scaleMin + (this.config.scaleMax - this.config.scaleMin) * t;
+
+                if (this.config.scaleUpMidtones) {
+                    const midtoneFactor = 1 - Math.pow((t - 0.5) * 2, 2);
+                    computedScale = this.config.scaleMin + (this.config.scaleMax - this.config.scaleMin) * midtoneFactor;
+                }
+
+                let colorChosen;
+                if (this.config.colorMode === 'sampled') {
+                    const avgRgb = { r: sumR / count, g: sumG / count, b: sumB / count };
+                    colorChosen = nearestPaletteColor(avgRgb, activeColors, activeColorsRgb);
+                } else {
+                    const seed = Math.sin(gridCol * 12.9898 + gridRow * 78.233) * 43758.5453;
+                    colorChosen = activeColors[Math.abs(Math.floor(seed * 1000)) % activeColors.length];
+                }
+
+                const availableFrac = 1 - pad * 2;
+
+                if (this.loadedPaths[stepIndex]) {
+                    const finalScale = (cell / 100) * computedScale * availableFrac;
+                    const rot = this.config.rotation;
+                    const innerContent = this.loadedPaths[stepIndex].rawSvg
+                        .replace(/<svg[^>]*>/i, '')
+                        .replace(/<\/svg>/i, '')
+                        .replace(/currentColor/g, colorChosen);
+
+                    const styleAttr = `mix-blend-mode: ${this.config.blendMode || 'normal'}; opacity: ${this.config.shapeOpacity ?? 1};`;
+
+                    svg += `<g transform="translate(${x + cell / 2}, ${y + cell / 2}) rotate(${rot}) scale(${finalScale}) translate(-50, -50)" style="${styleAttr}">\n`;
+                    svg += `${innerContent}\n`;
+                    svg += `</g>\n`;
+                }
+            }
+        }
+
+        svg += `</svg>`;
+        return svg;
+    }
 
     destroy() {
         if (this._objectUrl) URL.revokeObjectURL(this._objectUrl);
