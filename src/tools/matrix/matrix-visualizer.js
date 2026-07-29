@@ -469,12 +469,7 @@ export class MatrixVisualizer {
             const title = document.createElement('h2');
             title.textContent = 'Large export warning';
 
-            const closeBtn = document.createElement('button');
-            closeBtn.className = 'notion-btn notion-btn-secondary close-modal-btn';
-            closeBtn.innerHTML = '<span class="material-symbols-outlined">close</span>';
-
             header.appendChild(title);
-            header.appendChild(closeBtn);
 
             const body = document.createElement('div');
             body.className = 'info-modal-body';
@@ -513,7 +508,6 @@ export class MatrixVisualizer {
             const cancel = () => { cleanup(); resolve(false); };
             const proceed = () => { cleanup(); resolve(true); };
 
-            closeBtn.onclick = cancel;
             cancelBtn.onclick = cancel;
             overlay.onclick = (e) => { if (e.target === overlay) cancel(); };
             proceedBtn.onclick = proceed;

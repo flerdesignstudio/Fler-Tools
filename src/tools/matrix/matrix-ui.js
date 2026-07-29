@@ -1,10 +1,11 @@
 import { MatrixVisualizer } from './matrix-visualizer.js';
 import { animate, stagger } from 'motion';
+import matrixIcon from '../../Assets/matrix.svg?raw';
 
 export default {
     id: 'matrix',
     label: 'Matrix',
-    icon: '▤',
+    icon: matrixIcon,
 
     _visualizer: null,
     _listeners: [],

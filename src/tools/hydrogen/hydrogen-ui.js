@@ -1,10 +1,11 @@
 import { HydrogenVisualizer, CLASSIC_ORBITAL_PRESETS } from './visualizer.js';
 import { animate, stagger } from 'motion';
+import hydrogenIcon from '../../Assets/hydrogen.svg?raw';
 
 export default {
     id: 'hydrogen',
     label: 'Hydrogen',
-    icon: '⚛',
+    icon: hydrogenIcon,
 
     _visualizer: null,
     _listeners: [],

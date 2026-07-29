@@ -1,10 +1,11 @@
 import { DitherVisualizer } from './dither-visualizer.js';
-import { animate } from 'motion';
+import { animate, stagger } from 'motion';
+import ditherIcon from '../../Assets/dither.svg?raw';
 
 export default {
     id: 'dither',
-    label: 'Dithering',
-    icon: '▒',
+    label: 'Dither',
+    icon: ditherIcon,
 
     _visualizer: null,
     _listeners: [],

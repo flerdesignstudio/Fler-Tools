@@ -1,10 +1,11 @@
 import { OscilloscopeVisualizer } from './visualizer.js';
 import { animate, stagger, spring } from 'motion';
+import oscilloscopeIcon from '../../Assets/oscilloscope.svg?raw';
 
 export default {
     id: 'oscilloscope',
     label: 'Oscilloscope',
-    icon: '∿',
+    icon: oscilloscopeIcon,
     
     _visualizer: null,
     _listeners: [], 

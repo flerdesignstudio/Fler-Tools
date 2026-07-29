@@ -1,10 +1,11 @@
 import { CellsVisualizer } from './visualizer.js';
 import { animate, stagger } from 'motion';
+import cellsIcon from '../../Assets/cells.svg?raw';
 
 export default {
     id: 'cells',
     label: 'Cells',
-    icon: '⬢',
+    icon: cellsIcon,
     
     _visualizer: null,
     _listeners: [],

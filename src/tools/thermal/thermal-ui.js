@@ -1,10 +1,11 @@
-import { animate } from 'motion';
+import { animate, stagger } from 'motion';
 import { ThermalVisualizer } from './thermal-visualizer.js';
+import thermalIcon from '../../Assets/thermal.svg?raw';
 
 export default {
     id: 'thermal',
-    label: 'Thermal Image',
-    icon: '♨︎',
+    label: 'Thermal',
+    icon: thermalIcon,
     _visualizer: null,
     _listeners: [],
     _view: { isDragging: false, startX: 0, startY: 0, panX: 0, panY: 0, zoom: 1 },

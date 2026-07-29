@@ -1,10 +1,11 @@
 import { ChladniVisualizer } from './visualizer.js';
-import { animate, stagger, spring } from 'motion';
+import { animate, stagger } from 'motion';
+import chladniIcon from '../../Assets/chladni.svg?raw';
 
 export default {
     id: 'chladni',
     label: 'Chladni',
-    icon: '◈',
+    icon: chladniIcon,
     
     _visualizer: null,
     _listeners: [], // to store { element, event, handler } for easy cleanup

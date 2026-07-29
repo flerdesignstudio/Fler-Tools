@@ -1,0 +1,6 @@
+<svg width="44" height="20" viewBox="0 0 44 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="hydrogen">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M0 0V20H5V0H0ZM15 0V20H20V0H15ZM0 10H20V15H0V10Z" fill="currentColor"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M39 0V15H44V0H39ZM34 10V20H39V10H34ZM24 0V10L29 15H39V10H29V0H24Z" fill="currentColor"/>
+</g>
+</svg>

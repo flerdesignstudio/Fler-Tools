@@ -260,7 +260,8 @@ body::before {
     background: var(--bg-panel);
     border: 1px solid var(--border-subtle);
     pointer-events: auto;
-    position: relative; /* Override .panel absolute */
+    position: relative;
+    /* Override .panel absolute */
 }
 
 .icon-btn:hover {
@@ -317,20 +318,25 @@ body::before {
     align-items: center;
     gap: 8px;
 }
-.tool-drop-zone:hover, .tool-drop-zone.dragover {
+
+.tool-drop-zone:hover,
+.tool-drop-zone.dragover {
     border-color: var(--accent);
     background: var(--bg-button-hover);
 }
+
 .tool-drop-zone .material-symbols-outlined {
     font-size: 32px;
     color: var(--text-secondary);
 }
+
 .tool-drop-zone p {
     font-size: 13px;
     color: var(--text-secondary);
     margin: 0;
     line-height: 1.4;
 }
+
 .tool-file-input {
     position: absolute;
     inset: 0;
@@ -469,14 +475,14 @@ body::before {
     border-bottom-right-radius: 10px;
 }
 
-.segmented-switch input[type="radio"]:checked + label {
+.segmented-switch input[type="radio"]:checked+label {
     background: var(--bg-button-active);
     border-color: var(--bg-button-active);
     color: var(--text-active);
     z-index: 1;
 }
 
-.segmented-switch input[type="radio"]:focus-visible + label {
+.segmented-switch input[type="radio"]:focus-visible+label {
     box-shadow: var(--focus-ring);
     z-index: 2;
 }
@@ -485,7 +491,7 @@ body::before {
     background: var(--bg-button-hover);
 }
 
-.segmented-switch input[type="radio"]:checked + label:hover {
+.segmented-switch input[type="radio"]:checked+label:hover {
     background: var(--bg-button-active);
 }
 
@@ -680,6 +686,13 @@ input[type="color"]::-moz-color-swatch {
     font-size: 16px;
 }
 
+.icon svg {
+    height: 1em;
+    width: auto;
+    display: inline-block;
+    vertical-align: middle;
+}
+
 .notion-btn:focus-visible {
     box-shadow: var(--focus-ring);
 }
@@ -696,7 +709,8 @@ input[type="color"]::-moz-color-swatch {
     border-color: transparent;
 }
 
-.notion-btn:disabled, .notion-btn.disabled {
+.notion-btn:disabled,
+.notion-btn.disabled {
     opacity: 0.5;
     cursor: not-allowed;
     pointer-events: none;
@@ -881,7 +895,7 @@ input[type="color"]::-moz-color-swatch {
 }
 
 .tool-card .icon {
-    font-size: 24px;
+    font-size: 16px;
     color: var(--text-primary);
 }
 

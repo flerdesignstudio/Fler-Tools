@@ -1,0 +1,6 @@
+<svg width="44" height="20" viewBox="0 0 44 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="thermal">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M0 0V5H20V0H0ZM5 0V20H10V0H5Z" fill="currentColor"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M24 0V20H29V0H24ZM39 0V20H44V0H39ZM24 10H44V15H24V10Z" fill="currentColor"/>
+</g>
+</svg>

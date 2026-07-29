@@ -1,10 +1,11 @@
 import { AsciiVisualizer } from './ascii-visualizer.js';
 import { animate, stagger } from 'motion';
+import asciiIcon from '../../Assets/ascii.svg?raw';
 
 export default {
     id: 'ascii',
-    label: 'ASCII Art',
-    icon: '▦',
+    label: 'ASCII',
+    icon: asciiIcon,
 
     _visualizer: null,
     _listeners: [],       // { el, eventName, handler } — element-bound listeners, cleaned up in destroy()

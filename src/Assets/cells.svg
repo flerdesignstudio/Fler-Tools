@@ -1,0 +1,6 @@
+<svg width="44" height="20" viewBox="0 0 44 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="cells">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M0 20H20V15H0V20ZM0 20H5V0H0V20ZM0 5H20V0H0V5Z" fill="currentColor"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M24 0V20H29V0H24ZM24 5H44V0H24V5ZM24 15V20H44V15H24ZM34 5L29 10L34 15L39 10L34 5Z" fill="currentColor"/>
+</g>
+</svg>
