@@ -17,7 +17,15 @@ export class ThermalVisualizer {
         this.offscreenCtx = this.offscreenCanvas.getContext('2d', { willReadFrequently: true });
         this.mediaElement = null;
         this._objectUrl = null;
-        this._renderTimeout = null;
+        
+        this._rafPending = false;
+        this._rafId = null;
+        
+        this._randomSize = 8192;
+        this._randomBuffer = new Float32Array(this._randomSize);
+        for (let i = 0; i < this._randomSize; i++) {
+            this._randomBuffer[i] = Math.random() - 0.5;
+        }
 
         this.config = {
             resolution: 800,
@@ -46,12 +54,13 @@ export class ThermalVisualizer {
     }
 
     triggerRender() {
-        if (!this.mediaElement) return;
-        clearTimeout(this._renderTimeout);
-        this._renderTimeout = setTimeout(() => {
+        if (!this.mediaElement || this._rafPending) return;
+        this._rafPending = true;
+        this._rafId = requestAnimationFrame(() => {
             this._renderFrame();
-            this._renderTimeout = null;
-        }, 50);
+            this._rafPending = false;
+            this._rafId = null;
+        });
     }
 
     loadMedia(file) {
@@ -170,13 +179,14 @@ export class ThermalVisualizer {
         const sensorNoiseAmt = Number(this.config.sensorNoise) / 100;
         const overlayGrainAmt = Number(this.config.overlayGrain) / 100 * 255;
 
+        let randIdx = 0;
         for (let pixel = 0, offset = 0; pixel < luminance.length; pixel++, offset += 4) {
             if (pixels[offset + 3] === 0) continue;
             let t = (luminance[pixel] - black) / range;
             t = (t - 0.5) * contrast + 0.5 + brightness;
             
             if (sensorNoiseAmt > 0) {
-                t += (Math.random() - 0.5) * sensorNoiseAmt;
+                t += this._randomBuffer[randIdx++ & 8191] * sensorNoiseAmt;
             }
             
             t = Math.max(0, Math.min(1, t));
@@ -186,7 +196,7 @@ export class ThermalVisualizer {
             const color = this._samplePalette(t, palette);
             
             if (overlayGrainAmt > 0) {
-                const noise = (Math.random() - 0.5) * overlayGrainAmt;
+                const noise = this._randomBuffer[randIdx++ & 8191] * overlayGrainAmt;
                 pixels[offset] = Math.max(0, Math.min(255, color[0] + noise));
                 pixels[offset + 1] = Math.max(0, Math.min(255, color[1] + noise));
                 pixels[offset + 2] = Math.max(0, Math.min(255, color[2] + noise));
@@ -209,7 +219,7 @@ export class ThermalVisualizer {
     }
 
     destroy() {
-        clearTimeout(this._renderTimeout);
+        if (this._rafId) cancelAnimationFrame(this._rafId);
         if (this._objectUrl) URL.revokeObjectURL(this._objectUrl);
         this.mediaElement = null;
     }

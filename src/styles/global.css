@@ -48,6 +48,7 @@
 
     --dur-fast: 150ms;
     --dur-base: 250ms;
+    --dur-normal: 300ms;
     --dur-slow: 400ms;
 }
 
@@ -386,6 +387,11 @@ body::before {
     cursor: pointer;
 }
 
+.notion-slider:disabled {
+    opacity: 0.35;
+    pointer-events: none;
+}
+
 .notion-slider:focus-visible {
     box-shadow: var(--focus-ring);
     border-radius: 3px;
@@ -562,11 +568,15 @@ body::before {
 }
 
 .notion-select {
-    background: var(--glass-low);
+    background-color: var(--glass-low);
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    background-size: 14px;
     backdrop-filter: blur(8px);
     color: var(--text-primary);
     border: 1px solid var(--border-default);
-    padding: 7px 10px;
+    padding: 7px 28px 7px 10px;
     /* slightly taller */
     border-radius: var(--radius-sm);
     font-family: inherit;
@@ -576,12 +586,12 @@ body::before {
     outline: none;
     cursor: pointer;
     appearance: none;
-    transition: border-color var(--dur-fast) var(--ease-standard), background var(--dur-fast) var(--ease-standard);
+    transition: border-color var(--dur-fast) var(--ease-standard), background-color var(--dur-fast) var(--ease-standard);
     min-height: 36px;
 }
 
 .notion-select:hover {
-    background: var(--glass-mid);
+    background-color: var(--glass-mid);
     border-color: var(--border-strong);
 }
 
@@ -813,10 +823,7 @@ input[type="color"]::-moz-color-swatch {
 /* ── Tools Modal ─────────────────────────────────── */
 .tools-modal-overlay {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
+    inset: 0;
     background: rgba(0, 0, 0, 0.6);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
@@ -895,6 +902,12 @@ input[type="color"]::-moz-color-swatch {
     background: var(--glass-hover);
     border-color: var(--border-strong);
     transform: translateY(-2px);
+}
+
+.tool-card:focus-visible {
+    outline: none;
+    border-color: rgba(255, 255, 255, 0.22);
+    box-shadow: var(--focus-ring);
 }
 
 .tool-card .icon {

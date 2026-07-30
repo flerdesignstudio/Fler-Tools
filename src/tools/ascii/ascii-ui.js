@@ -1,5 +1,7 @@
 import { AsciiVisualizer } from './ascii-visualizer.js';
 import { animate, stagger } from 'motion';
+import { createPanZoom, addListenerTracked } from '../../utils/pan-zoom.js';
+import { bindDropZone } from '../../utils/drop-zone.js';
 import asciiIcon from '../../Assets/ascii.svg?raw';
 
 export default {
@@ -12,6 +14,7 @@ export default {
 
     // View-only state (pan/zoom/rotation). Never touches pixels, so it lives here, not in the visualizer.
     _view: { isDragging: false, startX: 0, startY: 0, panX: 0, panY: 0, zoom: 1 },
+    _resetView: null,
 
     getSidebarHTML() {
         return `
@@ -163,13 +166,11 @@ export default {
     },
 
     _addListenerEl(el, eventName, handler) {
-        if (!el) return;
-        el.addEventListener(eventName, handler);
-        this._listeners.push({ el, eventName, handler });
+        addListenerTracked(el, eventName, handler, this._listeners);
     },
 
     _addListener(elementId, eventName, handler) {
-        this._addListenerEl(document.getElementById(elementId), eventName, handler);
+        addListenerTracked(document.getElementById(elementId), eventName, handler, this._listeners);
     },
 
     init(sidebarContainer, mainContainer) {
@@ -186,7 +187,26 @@ export default {
 
         this._syncUIToVisualizer();
 
-        this._bindPanZoomRotate();
+        // Shared pan/zoom
+        const { resetView } = createPanZoom({
+            containerId: 'asciiPreview',
+            wrapperId: 'asciiCanvasWrapper',
+            listeners: this._listeners,
+            view: this._view,
+        });
+        this._resetView = resetView;
+
+        // Bind rotation sliders (ASCII-specific add-on)
+        this._bindRotation();
+
+        // Shared drop zone
+        bindDropZone({
+            dropZoneId: 'asciiDropZone',
+            fileInputId: 'asciiMediaUpload',
+            onFile: (file) => this._visualizer.loadMedia(file),
+            listeners: this._listeners,
+        });
+
         this._bindControls();
     },
 
@@ -218,12 +238,6 @@ export default {
         }
     },
 
-    _applyViewTransforms() {
-        const wrapper = document.getElementById('asciiCanvasWrapper');
-        const { panX, panY, zoom } = this._view;
-        wrapper.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`;
-    },
-
     _updateRotation() {
         const canvas = document.getElementById('asciiCanvas');
         const rotX = document.getElementById('asciiRotX').value;
@@ -231,74 +245,20 @@ export default {
         canvas.style.transform = `rotateX(${rotX}deg) rotateY(${rotY}deg)`;
     },
 
-    _bindPanZoomRotate() {
-        const container = document.getElementById('asciiPreview');
-        const v = this._view;
-
-        this._addListenerEl(container, 'wheel', (e) => {
-            e.preventDefault();
-            const zoomSpeed = 0.08;
-            v.zoom += (e.deltaY < 0 ? zoomSpeed : -zoomSpeed);
-            v.zoom = Math.max(0.15, Math.min(6, v.zoom));
-            this._applyViewTransforms();
-        });
-
-        this._addListenerEl(container, 'mousedown', (e) => {
-            if (['INPUT', 'SELECT', 'BUTTON'].includes(e.target.tagName)) return;
-            v.isDragging = true;
-            v.startX = e.clientX - v.panX;
-            v.startY = e.clientY - v.panY;
-        });
-
-        this._addListenerEl(window, 'mousemove', (e) => {
-            if (!v.isDragging) return;
-            v.panX = e.clientX - v.startX;
-            v.panY = e.clientY - v.startY;
-            this._applyViewTransforms();
-        });
-
-        this._addListenerEl(window, 'mouseup', () => { v.isDragging = false; });
-        this._addListenerEl(window, 'mouseleave', () => { v.isDragging = false; });
-
+    _bindRotation() {
         this._addListener('asciiRotX', 'input', () => this._updateRotation());
         this._addListener('asciiRotY', 'input', () => this._updateRotation());
 
         this._addListener('asciiResetView', 'click', () => {
-            v.panX = 0; v.panY = 0; v.zoom = 1;
+            if (this._resetView) this._resetView();
             document.getElementById('asciiRotX').value = 0;
             document.getElementById('asciiRotY').value = 0;
-            this._applyViewTransforms();
             this._updateRotation();
         });
     },
 
     _bindControls() {
         const v = this._visualizer;
-
-        const dropZone = document.getElementById('asciiDropZone');
-        if (dropZone) {
-            ['dragenter', 'dragover'].forEach(eventName => {
-                this._addListenerEl(dropZone, eventName, (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    dropZone.classList.add('dragover');
-                });
-            });
-            ['dragleave', 'drop'].forEach(eventName => {
-                this._addListenerEl(dropZone, eventName, (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    dropZone.classList.remove('dragover');
-                    if (eventName === 'drop' && e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                        v.loadMedia(e.dataTransfer.files[0]);
-                    }
-                });
-            });
-        }
-
-        this._addListener('asciiMediaUpload', 'change', (e) => {
-            v.loadMedia(e.target.files[0]);
-        });
 
         this._addListener('asciiAspectRatio', 'change', (e) => {
             v.updateConfig({ aspectMode: e.target.value });
@@ -345,7 +305,8 @@ export default {
             el.removeEventListener(eventName, handler);
         });
         this._listeners = [];
-
+        this._resetView = null;
+        // Reset view state so zoom/pan doesn't persist between sessions
         this._view = { isDragging: false, startX: 0, startY: 0, panX: 0, panY: 0, zoom: 1 };
     }
 }

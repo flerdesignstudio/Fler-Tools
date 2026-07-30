@@ -30,7 +30,7 @@ The heart of the architecture is its registration and loading system for **Tools
 
 ### The Central Registry (`src/app.js`)
 `app.js` acts as an orchestrator. Its main responsibilities are:
-*   **Tool Registry**: Imports the various tools (Chladni, Hydrogen, Oscilloscope) and maps them into an object (the registry).
+*   **Tool Registry**: Imports the various tools (Chladni, Hydrogen, Oscilloscope, ASCII, Dither, Cells, Thermal, Matrix) and maps them into an object (the registry).
 *   **Lifecycle Management**: Handles loading the requested tool via the `loadTool()` function.
     *   Calls the `destroy()` method of the current tool to clean up events and DOM.
     *   Animates the exit of old panels and the entry of new ones using `motion`.
@@ -43,11 +43,18 @@ Each tool resides in its own independent folder and must expose a standard inter
 *   `label`: The readable name shown in the navigation bar.
 *   `icon`: The icon of the tool (e.g., a Material Design symbol).
 *   `init(sidebarContainer, mainContainer)`: The method called when the tool is selected. Here the tool injects its HTML into the sidebar for controls and into the main container for the graphical canvas. It also sets up event listeners.
-*   `destroy()`: The method called when the user changes tools. It is used to stop animations (e.g., `requestAnimationFrame`), remove listeners, and clean up the DOM.
+*   `destroy()`: The method called when the user changes tools. It is used to stop animations (e.g., `requestAnimationFrame`), remove listeners, clean up the DOM, and reset view state (pan/zoom).
 
-*(Current examples of implemented tools: `chladni`, `hydrogen`, `oscilloscope`)*
+*(Current tools: `chladni`, `hydrogen`, `oscilloscope`, `ascii`, `dither`, `cells`, `thermal`, `matrix`)*
 
-## 4. Execution Flow (Runtime)
+## 4. Shared Utilities (`src/utils/`)
+
+Common interaction patterns are extracted into shared utility modules to ensure consistent behaviour across all tools:
+
+*   **`pan-zoom.js`**: Provides `createPanZoom()` for scroll-to-zoom and drag-to-pan on preview containers, and `addListenerTracked()` for tracked event listener cleanup. Used by: ASCII, Cells, Dither, Matrix, Thermal.
+*   **`drop-zone.js`**: Provides `bindDropZone()` for drag-and-drop file upload handling with visual feedback (`.dragover` class). Used by: ASCII, Dither, Matrix, Thermal.
+
+## 5. Execution Flow (Runtime)
 
 1.  **Startup**: Vite serves the application and loads `index.html`.
 2.  **Initialization**: `src/app.js` is executed. It builds the navigation bar by iterating over the `tools` object.
@@ -56,7 +63,7 @@ Each tool resides in its own independent folder and must expose a standard inter
 5.  **Tool Switch**: The user clicks a button in the navigation. The application executes the teardown (`destroy()`) of the current tool, resets the DOM via fading animations, and executes the setup (`init()`) of the newly chosen tool.
 6.  **Export**: Clicking Export, the global event detects the active tool and invokes its specific export methods, delegating to the tool the serialization of its own graphics.
 
-## 5. File System Overview
+## 6. File System Overview
 
 ```text
 Graphic-Tools/
@@ -67,8 +74,16 @@ Graphic-Tools/
 │   ├── Assets/            # Images, logos, and static resources
 │   ├── styles/
 │   │   └── global.css     # Global styles, layered layout, theming (glass)
+│   ├── utils/             # Shared interaction utilities
+│   │   ├── pan-zoom.js    # Scroll-to-zoom and drag-to-pan (Pointer Events)
+│   │   └── drop-zone.js   # Drag-and-drop file upload handling
 │   └── tools/             # Modules for individual instruments
-│       ├── chladni/       # Logic and UI for Chladni figure generation
-│       ├── hydrogen/      # Logic and UI for Hydrogen atomic orbital
-│       └── oscilloscope/  # Logic and UI for the oscilloscope
+│       ├── ascii/         # ASCII art image-to-text converter
+│       ├── cells/         # Voronoi cell pattern generator
+│       ├── chladni/       # Chladni figure particle simulation
+│       ├── dither/        # Image dithering with retro palettes
+│       ├── hydrogen/      # Hydrogen atomic orbital visualizer
+│       ├── matrix/        # Shape-matrix photo halftoning engine
+│       ├── oscilloscope/  # Lissajous curve oscilloscope
+│       └── thermal/       # False-color thermal imaging filter
 ```

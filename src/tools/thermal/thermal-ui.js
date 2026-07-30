@@ -1,5 +1,7 @@
 import { animate, stagger } from 'motion';
 import { ThermalVisualizer } from './thermal-visualizer.js';
+import { createPanZoom, addListenerTracked } from '../../utils/pan-zoom.js';
+import { bindDropZone } from '../../utils/drop-zone.js';
 import thermalIcon from '../../Assets/thermal.svg?raw';
 
 export default {
@@ -9,6 +11,7 @@ export default {
     _visualizer: null,
     _listeners: [],
     _view: { isDragging: false, startX: 0, startY: 0, panX: 0, panY: 0, zoom: 1 },
+    _resetView: null,
 
     getSidebarHTML() {
         return `
@@ -84,35 +87,36 @@ export default {
         animate('#thermalPreview', { opacity: [0, 1], scale: [0.97, 1] }, { duration: 0.5, easing: [0.05, 0.7, 0.1, 1] });
         this._visualizer = new ThermalVisualizer(document.getElementById('thermalCanvas'));
         this._setLevelControlsEnabled(false);
-        this._bindPanZoom();
+
+        // Shared pan/zoom
+        const { resetView } = createPanZoom({
+            containerId: 'thermalPreview',
+            wrapperId: 'thermalCanvasWrapper',
+            listeners: this._listeners,
+            view: this._view,
+        });
+        this._resetView = resetView;
+
+        // Shared drop zone
+        bindDropZone({
+            dropZoneId: 'thermalDropZone',
+            fileInputId: 'thermalMediaUpload',
+            onFile: (file) => this._visualizer.loadMedia(file),
+            listeners: this._listeners,
+        });
+
         this._setupListeners();
     },
 
-    _addListener(id, eventName, handler) { this._addListenerEl(document.getElementById(id), eventName, handler); },
-    _addListenerEl(el, eventName, handler) { if (el) { el.addEventListener(eventName, handler); this._listeners.push({ el, eventName, handler }); } },
+    _addListener(id, eventName, handler) { addListenerTracked(document.getElementById(id), eventName, handler, this._listeners); },
     _setLevelControlsEnabled(enabled) {
         ['thermalBlackPoint', 'thermalWhitePoint'].forEach((id) => {
             const control = document.getElementById(id);
             if (control) control.disabled = !enabled;
         });
     },
-    _applyViewTransforms() { const el = document.getElementById('thermalCanvasWrapper'); if (el) el.style.transform = `translate(${this._view.panX}px, ${this._view.panY}px) scale(${this._view.zoom})`; },
-
-    _bindPanZoom() {
-        const container = document.getElementById('thermalPreview');
-        this._addListenerEl(container, 'wheel', (event) => { event.preventDefault(); this._view.zoom = Math.min(10, Math.max(0.1, this._view.zoom - event.deltaY * 0.002)); this._applyViewTransforms(); });
-        this._addListenerEl(container, 'pointerdown', (event) => { if (event.button !== 0) return; this._view.isDragging = true; this._view.startX = event.clientX - this._view.panX; this._view.startY = event.clientY - this._view.panY; container.setPointerCapture(event.pointerId); });
-        this._addListenerEl(container, 'pointermove', (event) => { if (!this._view.isDragging) return; this._view.panX = event.clientX - this._view.startX; this._view.panY = event.clientY - this._view.startY; this._applyViewTransforms(); });
-        const stopDrag = (event) => { this._view.isDragging = false; if (container.hasPointerCapture(event.pointerId)) container.releasePointerCapture(event.pointerId); };
-        this._addListenerEl(container, 'pointerup', stopDrag);
-        this._addListenerEl(container, 'pointercancel', stopDrag);
-    },
 
     _setupListeners() {
-        const dropZone = document.getElementById('thermalDropZone');
-        ['dragenter', 'dragover'].forEach((name) => this._addListenerEl(dropZone, name, (event) => { event.preventDefault(); event.stopPropagation(); dropZone.classList.add('dragover'); }));
-        ['dragleave', 'drop'].forEach((name) => this._addListenerEl(dropZone, name, (event) => { event.preventDefault(); event.stopPropagation(); dropZone.classList.remove('dragover'); if (name === 'drop' && event.dataTransfer.files[0]) this._visualizer.loadMedia(event.dataTransfer.files[0]); }));
-        this._addListener('thermalMediaUpload', 'change', (event) => this._visualizer.loadMedia(event.target.files[0]));
         this._addListener('thermalPalette', 'change', (event) => this._visualizer.updateConfig({ paletteKey: event.target.value }));
         this._addListener('thermalAutoLevels', 'change', (event) => {
             this._setLevelControlsEnabled(!event.target.checked);
@@ -123,8 +127,16 @@ export default {
         ['thermalBlackPoint', 'thermalWhitePoint'].forEach((id) => this._addListener(id, 'input', (event) => { document.getElementById(`${id}Val`).textContent = `${event.target.value}%`; this._visualizer.updateConfig({ [id === 'thermalBlackPoint' ? 'blackPoint' : 'whitePoint']: event.target.value }); }));
         ['thermalBlur', 'thermalSensorNoise', 'thermalOverlayGrain'].forEach((id) => this._addListener(id, 'input', (event) => { const suffix = id === 'thermalBlur' ? 'px' : ''; document.getElementById(`${id}Val`).textContent = `${event.target.value}${suffix}`; const key = id.replace('thermal', '').replace(/^./, (c) => c.toLowerCase()); this._visualizer.updateConfig({ [key]: event.target.value }); }));
         ['thermalBrightness', 'thermalContrast', 'thermalGamma'].forEach((id) => this._addListener(id, 'input', (event) => { document.getElementById(`${id}Val`).textContent = id === 'thermalBrightness' ? event.target.value : Number(event.target.value).toFixed(1); const key = id.replace('thermal', '').replace(/^./, (c) => c.toLowerCase()); this._visualizer.updateConfig({ [key]: event.target.value }); }));
-        this._addListener('thermalResetView', 'click', () => { this._view = { isDragging: false, startX: 0, startY: 0, panX: 0, panY: 0, zoom: 1 }; this._applyViewTransforms(); });
+        this._addListener('thermalResetView', 'click', () => { if (this._resetView) this._resetView(); });
     },
 
-    destroy() { this._listeners.forEach(({ el, eventName, handler }) => el.removeEventListener(eventName, handler)); this._listeners = []; this._visualizer?.destroy(); this._visualizer = null; }
+    destroy() {
+        this._listeners.forEach(({ el, eventName, handler }) => el.removeEventListener(eventName, handler));
+        this._listeners = [];
+        this._visualizer?.destroy();
+        this._visualizer = null;
+        this._resetView = null;
+        // Reset view state so zoom/pan doesn't persist between sessions
+        this._view = { isDragging: false, startX: 0, startY: 0, panX: 0, panY: 0, zoom: 1 };
+    }
 };

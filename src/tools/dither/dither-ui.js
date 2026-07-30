@@ -1,5 +1,7 @@
 import { DitherVisualizer } from './dither-visualizer.js';
 import { animate, stagger } from 'motion';
+import { createPanZoom, addListenerTracked } from '../../utils/pan-zoom.js';
+import { bindDropZone } from '../../utils/drop-zone.js';
 import ditherIcon from '../../Assets/dither.svg?raw';
 
 export default {
@@ -9,6 +11,7 @@ export default {
 
     _visualizer: null,
     _listeners: [],
+    _resetView: null,
 
     // View state for pan/zoom
     _view: { isDragging: false, startX: 0, startY: 0, panX: 0, panY: 0, zoom: 1 },
@@ -158,7 +161,23 @@ export default {
 
         this._syncUIToVisualizer();
 
-        this._bindPanZoom();
+        // Shared pan/zoom
+        const { resetView } = createPanZoom({
+            containerId: 'ditherPreview',
+            wrapperId: 'ditherCanvasWrapper',
+            listeners: this._listeners,
+            view: this._view,
+        });
+        this._resetView = resetView;
+
+        // Shared drop zone
+        bindDropZone({
+            dropZoneId: 'ditherDropZone',
+            fileInputId: 'ditherMediaUpload',
+            onFile: (file) => this._visualizer.loadMedia(file),
+            listeners: this._listeners,
+        });
+
         this._setupListeners();
     },
 
@@ -196,91 +215,11 @@ export default {
         }
     },
 
-    _addListenerEl(el, eventName, handler) {
-        if (!el) return;
-        el.addEventListener(eventName, handler);
-        this._listeners.push({ el, eventName, handler });
-    },
-
     _addListener(id, event, handler) {
-        this._addListenerEl(document.getElementById(id), event, handler);
-    },
-
-    _applyViewTransforms() {
-        const wrapper = document.getElementById('ditherCanvasWrapper');
-        if (!wrapper) return;
-        const { panX, panY, zoom } = this._view;
-        wrapper.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`;
-    },
-
-    _bindPanZoom() {
-        const container = document.getElementById('ditherPreview');
-        if (!container) return;
-
-        this._addListenerEl(container, 'wheel', (e) => {
-            e.preventDefault();
-            const zoomDelta = e.deltaY * -0.002;
-            this._view.zoom = Math.min(Math.max(0.1, this._view.zoom + zoomDelta), 10);
-            this._applyViewTransforms();
-        });
-
-        this._addListenerEl(container, 'pointerdown', (e) => {
-            if (e.button !== 0) return; // Only left click
-            this._view.isDragging = true;
-            this._view.startX = e.clientX - this._view.panX;
-            this._view.startY = e.clientY - this._view.panY;
-            container.setPointerCapture(e.pointerId);
-        });
-
-        this._addListenerEl(container, 'pointermove', (e) => {
-            if (!this._view.isDragging) return;
-            this._view.panX = e.clientX - this._view.startX;
-            this._view.panY = e.clientY - this._view.startY;
-            this._applyViewTransforms();
-        });
-
-        this._addListenerEl(container, 'pointerup', (e) => {
-            this._view.isDragging = false;
-            container.releasePointerCapture(e.pointerId);
-        });
-
-        this._addListenerEl(container, 'pointercancel', (e) => {
-            this._view.isDragging = false;
-            container.releasePointerCapture(e.pointerId);
-        });
+        addListenerTracked(document.getElementById(id), event, handler, this._listeners);
     },
 
     _setupListeners() {
-        // Drop zone styling events
-        const dropZone = document.getElementById('ditherDropZone');
-        if (dropZone) {
-            ['dragenter', 'dragover'].forEach(eventName => {
-                this._addListenerEl(dropZone, eventName, (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    dropZone.classList.add('dragover');
-                });
-            });
-            ['dragleave', 'drop'].forEach(eventName => {
-                this._addListenerEl(dropZone, eventName, (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    dropZone.classList.remove('dragover');
-                    if (eventName === 'drop' && e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                        this._visualizer.loadMedia(e.dataTransfer.files[0]);
-                    }
-                });
-            });
-        }
-
-        // Handle file drop & selection
-        this._addListener('ditherMediaUpload', 'change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                this._visualizer.loadMedia(file);
-            }
-        });
-
         this._addListener('ditherAlgorithm', 'change', (e) => {
             this._visualizer.updateConfig({ algorithm: e.target.value });
         });
@@ -315,8 +254,7 @@ export default {
         });
 
         this._addListener('ditherResetView', 'click', () => {
-            this._view = { isDragging: false, startX: 0, startY: 0, panX: 0, panY: 0, zoom: 1 };
-            this._applyViewTransforms();
+            if (this._resetView) this._resetView();
         });
     },
 
@@ -329,5 +267,8 @@ export default {
             this._visualizer.destroy();
         }
         this._visualizer = null;
+        this._resetView = null;
+        // Reset view state so zoom/pan doesn't persist between sessions
+        this._view = { isDragging: false, startX: 0, startY: 0, panX: 0, panY: 0, zoom: 1 };
     }
 };

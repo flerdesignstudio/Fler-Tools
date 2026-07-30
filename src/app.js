@@ -156,11 +156,21 @@ document.addEventListener('DOMContentLoaded', () => {
         toolsArray.forEach(tool => {
             const card = document.createElement('div');
             card.className = 'tool-card';
+            card.role = 'button';
+            card.tabIndex = 0;
             card.innerHTML = `<span class="icon">${tool.icon}</span><span class="label">${tool.label}</span>`;
-            card.onclick = () => {
+            const activate = () => {
                 loadTool(tool.id);
                 const overlay = document.getElementById('tools-modal-overlay');
                 if (overlay) overlay.classList.remove('active');
+                document.querySelector('.more-tools-btn')?.focus();
+            };
+            card.onclick = activate;
+            card.onkeydown = (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    activate();
+                }
             };
             modalGrid.appendChild(card);
         });
@@ -184,16 +194,67 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeInfoBtn = document.getElementById('closeInfoModalBtn');
 
     if (infoBtn && infoModalOverlay) {
-        infoBtn.onclick = () => infoModalOverlay.classList.add('active');
+        infoBtn.onclick = () => {
+            infoModalOverlay.classList.add('active');
+            infoModalOverlay.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')?.focus();
+        };
     }
     if (closeInfoBtn && infoModalOverlay) {
-        closeInfoBtn.onclick = () => infoModalOverlay.classList.remove('active');
+        closeInfoBtn.onclick = () => {
+            infoModalOverlay.classList.remove('active');
+            infoBtn.focus();
+        };
     }
     if (infoModalOverlay) {
         infoModalOverlay.onclick = (e) => {
-            if (e.target === infoModalOverlay) infoModalOverlay.classList.remove('active');
+            if (e.target === infoModalOverlay) {
+                infoModalOverlay.classList.remove('active');
+                infoBtn.focus();
+            }
         };
     }
+
+    // Modal Escape Key & Focus Trap setup
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            if (modalOverlay?.classList.contains('active')) {
+                modalOverlay.classList.remove('active');
+                document.querySelector('.more-tools-btn')?.focus();
+            }
+            if (infoModalOverlay?.classList.contains('active')) {
+                infoModalOverlay.classList.remove('active');
+                infoBtn?.focus();
+            }
+        }
+    });
+
+    const trapFocus = (modal) => {
+        if (!modal) return;
+        modal.addEventListener('keydown', (e) => {
+            if (e.key !== 'Tab') return;
+            const focusable = Array.from(modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'))
+                .filter(el => !el.hasAttribute('disabled') && el.offsetParent !== null);
+            if (focusable.length === 0) return;
+            
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+
+            if (e.shiftKey) {
+                if (document.activeElement === first || document.activeElement === modal) {
+                    last.focus();
+                    e.preventDefault();
+                }
+            } else {
+                if (document.activeElement === last) {
+                    first.focus();
+                    e.preventDefault();
+                }
+            }
+        });
+    };
+
+    trapFocus(modalOverlay);
+    trapFocus(infoModalOverlay);
 
     // Load initial tool (Chladni)
     loadTool(chladniTool.id);
@@ -239,8 +300,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (currentTool && currentTool._visualizer && currentTool._visualizer.exportToPNG) {
             currentTool._visualizer.exportToPNG(`${currentTool.id}-export.png`);
         } else {
-            // Fallback to directly capturing the canvas
-            const canvas = document.getElementById('visualizer') || document.getElementById('hydrogen_visualizer') || document.getElementById('oscVisualizer') || document.getElementById('matrixCanvas');
+            // Fallback: capture the first canvas inside the tool container
+            const canvas = document.getElementById('tool-main-container')?.querySelector('canvas');
             if (canvas) {
                 const url = canvas.toDataURL('image/png');
                 const a = document.createElement('a');

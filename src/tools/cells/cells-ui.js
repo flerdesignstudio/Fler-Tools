@@ -1,5 +1,6 @@
 import { CellsVisualizer } from './visualizer.js';
 import { animate, stagger } from 'motion';
+import { createPanZoom, addListenerTracked } from '../../utils/pan-zoom.js';
 import cellsIcon from '../../Assets/cells.svg?raw';
 
 export default {
@@ -11,6 +12,7 @@ export default {
     _listeners: [],
 
     _view: { isDragging: false, startX: 0, startY: 0, panX: 0, panY: 0, zoom: 1 },
+    _resetView: null,
 
     getSidebarHTML() {
         return `
@@ -114,63 +116,11 @@ export default {
     },
 
     _addListener(elementId, eventName, handler) {
-        const el = document.getElementById(elementId);
-        if (el) {
-            this._addListenerEl(el, eventName, handler);
-        }
+        addListenerTracked(document.getElementById(elementId), eventName, handler, this._listeners);
     },
 
     _addListenerEl(el, eventName, handler) {
-        if (!el) return;
-        el.addEventListener(eventName, handler);
-        this._listeners.push({ el, eventName, handler });
-    },
-
-    _applyViewTransforms() {
-        const wrapper = document.getElementById('cellsCanvasWrapper');
-        if (!wrapper) return;
-        const { panX, panY, zoom } = this._view;
-        wrapper.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`;
-    },
-
-    _bindPanZoom() {
-        const container = document.getElementById('cellsPreview');
-        if (!container) return;
-
-        this._addListenerEl(container, 'wheel', (e) => {
-            e.preventDefault();
-            const zoomDelta = e.deltaY * -0.002;
-            this._view.zoom = Math.min(Math.max(0.1, this._view.zoom + zoomDelta), 10);
-            this._applyViewTransforms();
-        });
-
-        this._addListenerEl(container, 'pointerdown', (e) => {
-            if (e.button !== 0) return; // Only left click
-            this._view.isDragging = true;
-            this._view.startX = e.clientX - this._view.panX;
-            this._view.startY = e.clientY - this._view.panY;
-            container.setPointerCapture(e.pointerId);
-            container.style.cursor = 'grabbing';
-        });
-
-        this._addListenerEl(container, 'pointermove', (e) => {
-            if (!this._view.isDragging) return;
-            this._view.panX = e.clientX - this._view.startX;
-            this._view.panY = e.clientY - this._view.startY;
-            this._applyViewTransforms();
-        });
-
-        this._addListenerEl(container, 'pointerup', (e) => {
-            this._view.isDragging = false;
-            container.releasePointerCapture(e.pointerId);
-            container.style.cursor = 'grab';
-        });
-
-        this._addListenerEl(container, 'pointercancel', (e) => {
-            this._view.isDragging = false;
-            container.releasePointerCapture(e.pointerId);
-            container.style.cursor = 'grab';
-        });
+        addListenerTracked(el, eventName, handler, this._listeners);
     },
 
     init(sidebarContainer, mainContainer) {
@@ -202,10 +152,17 @@ export default {
             strokeWidth: document.getElementById('strokeWidthVal')
         };
 
-        // Sync UI inputs with visualizer defaults
         this._syncUIToVisualizer();
 
-        this._bindPanZoom();
+        // Shared pan/zoom
+        const { resetView } = createPanZoom({
+            containerId: 'cellsPreview',
+            wrapperId: 'cellsCanvasWrapper',
+            listeners: this._listeners,
+            view: this._view,
+        });
+        this._resetView = resetView;
+
         this._bindEvents();
     },
 
@@ -340,8 +297,7 @@ export default {
         });
 
         this._addListener('cellsResetView', 'click', () => {
-            this._view = { isDragging: false, startX: 0, startY: 0, panX: 0, panY: 0, zoom: 1 };
-            this._applyViewTransforms();
+            if (this._resetView) this._resetView();
         });
 
         document.querySelectorAll('.notion-btn').forEach(btn => {
@@ -370,5 +326,8 @@ export default {
             el.removeEventListener(eventName, handler);
         });
         this._listeners = [];
+        this._resetView = null;
+        // Reset view state so zoom/pan doesn't persist between sessions
+        this._view = { isDragging: false, startX: 0, startY: 0, panX: 0, panY: 0, zoom: 1 };
     }
 }

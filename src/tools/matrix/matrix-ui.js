@@ -1,5 +1,7 @@
 import { MatrixVisualizer } from './matrix-visualizer.js';
 import { animate, stagger } from 'motion';
+import { createPanZoom, addListenerTracked } from '../../utils/pan-zoom.js';
+import { bindDropZone } from '../../utils/drop-zone.js';
 import matrixIcon from '../../Assets/matrix.svg?raw';
 
 export default {
@@ -12,6 +14,7 @@ export default {
     _slotListeners: [], // rebuilt every time the shape-slot list re-renders — tracked separately so old detached slot nodes don't linger in _listeners
 
     _view: { isDragging: false, startX: 0, startY: 0, panX: 0, panY: 0, zoom: 1 },
+    _resetView: null,
 
     getSidebarHTML() {
         return `
@@ -166,13 +169,11 @@ export default {
     },
 
     _addListenerEl(el, eventName, handler, store = this._listeners) {
-        if (!el) return;
-        el.addEventListener(eventName, handler);
-        store.push({ el, eventName, handler });
+        addListenerTracked(el, eventName, handler, store);
     },
 
     _addListener(elementId, eventName, handler) {
-        this._addListenerEl(document.getElementById(elementId), eventName, handler);
+        addListenerTracked(document.getElementById(elementId), eventName, handler, this._listeners);
     },
 
     init(sidebarContainer, mainContainer) {
@@ -189,50 +190,20 @@ export default {
 
         this._renderColorGrid();
         this._renderShapeSlots();
-        this._bindPanZoom();
+
+        // Shared pan/zoom
+        const { resetView } = createPanZoom({
+            containerId: 'matrixPreview',
+            wrapperId: 'matrixCanvasWrapper',
+            listeners: this._listeners,
+            view: this._view,
+        });
+        this._resetView = resetView;
+
         this._bindControls();
     },
 
-    // --- Pan / zoom ---------------------------------------------------------
 
-    _applyViewTransforms() {
-        const wrapper = document.getElementById('matrixCanvasWrapper');
-        const { panX, panY, zoom } = this._view;
-        wrapper.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`;
-    },
-
-    _bindPanZoom() {
-        const container = document.getElementById('matrixPreview');
-
-        this._addListenerEl(container, 'wheel', (e) => {
-            e.preventDefault();
-            const zoomFactor = 1.1;
-            this._view.zoom = e.deltaY < 0 ? Math.min(this._view.zoom * zoomFactor, 4) : Math.max(this._view.zoom / zoomFactor, 0.1);
-            this._applyViewTransforms();
-        });
-
-        this._addListenerEl(container, 'pointerdown', (e) => {
-            if (e.button !== 0 || ['INPUT', 'SELECT', 'BUTTON'].includes(e.target.tagName)) return;
-            this._view.isDragging = true;
-            this._view.startX = e.clientX - this._view.panX;
-            this._view.startY = e.clientY - this._view.panY;
-            container.setPointerCapture(e.pointerId);
-        });
-
-        this._addListenerEl(container, 'pointermove', (e) => {
-            if (!this._view.isDragging) return;
-            this._view.panX = e.clientX - this._view.startX;
-            this._view.panY = e.clientY - this._view.startY;
-            this._applyViewTransforms();
-        });
-
-        this._addListenerEl(container, 'pointerup', (e) => {
-            this._view.isDragging = false;
-            container.releasePointerCapture(e.pointerId);
-        });
-
-        this._addListenerEl(container, 'pointercancel', () => { this._view.isDragging = false; });
-    },
 
     // --- Dynamic sub-lists (colors + shape slots) ----------------------------
 
@@ -308,31 +279,12 @@ export default {
     _bindControls() {
         const v = this._visualizer;
 
-        const dropZone = document.getElementById('matrixDropZone');
-        if (dropZone) {
-            ['dragenter', 'dragover'].forEach(eventName => {
-                this._addListenerEl(dropZone, eventName, (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    dropZone.classList.add('dragover');
-                });
-            });
-            ['dragleave', 'drop'].forEach(eventName => {
-                this._addListenerEl(dropZone, eventName, (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    dropZone.classList.remove('dragover');
-                    if (eventName === 'drop' && e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                        v.loadMedia(e.dataTransfer.files[0], () => { this._view = { isDragging: false, startX: 0, startY: 0, panX: 0, panY: 0, zoom: 1 }; this._applyViewTransforms(); });
-                    }
-                });
-            });
-        }
-
-        this._addListener('matrixMediaUpload', 'change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            v.loadMedia(file, () => { this._view = { isDragging: false, startX: 0, startY: 0, panX: 0, panY: 0, zoom: 1 }; this._applyViewTransforms(); });
+        // Shared drop zone — reset pan/zoom when a new image is loaded
+        bindDropZone({
+            dropZoneId: 'matrixDropZone',
+            fileInputId: 'matrixMediaUpload',
+            onFile: (file) => v.loadMedia(file, () => { if (this._resetView) this._resetView(); }),
+            listeners: this._listeners,
         });
 
         this._addListener('matrixBgColor', 'input', (e) => v.updateConfig({ bgColor: e.target.value }));
@@ -385,8 +337,7 @@ export default {
         });
 
         this._addListener('matrixResetView', 'click', () => {
-            this._view = { isDragging: false, startX: 0, startY: 0, panX: 0, panY: 0, zoom: 1 };
-            this._applyViewTransforms();
+            if (this._resetView) this._resetView();
         });
 
     },
@@ -403,7 +354,7 @@ export default {
             el.removeEventListener(eventName, handler);
         });
         this._listeners = [];
-
+        this._resetView = null;
         this._view = { isDragging: false, startX: 0, startY: 0, panX: 0, panY: 0, zoom: 1 };
     }
 };
