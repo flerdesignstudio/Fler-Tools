@@ -6,7 +6,8 @@ export class ThermalVisualizer {
         ironbow: ['#000000', '#21003c', '#760058', '#cc1c22', '#ff7800', '#ffd54a', '#ffffff'],
         inferno: ['#000004', '#320a5f', '#781c6d', '#bb3754', '#ed6925', '#fbb318', '#fcffa4'],
         arctic: ['#050a1f', '#123b78', '#1985bb', '#55d9e8', '#d9ffff', '#ffffff'],
-        grayscale: ['#000000', '#ffffff']
+        grayscale: ['#000000', '#ffffff'],
+        vibrant: ['#ffffff', '#00df34', '#ffe200', '#ff8c00', '#ff0000']
     };
 
     constructor(canvas) {

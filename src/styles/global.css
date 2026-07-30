@@ -183,8 +183,9 @@ body::before {
     flex-direction: column;
     gap: 16px;
     overflow-y: auto;
-    padding-right: 10px;
-    /* space for scrollbar */
+    overflow-x: hidden;
+    padding: 4px 14px 4px 4px;
+    margin: -4px -4px -4px -4px;
 }
 
 /* Custom scrollbar for settings */
@@ -793,7 +794,9 @@ input[type="color"]::-moz-color-swatch {
 #oscVisualizer,
 #asciiCanvas,
 #cells_visualizer,
-#matrixCanvas {
+#matrixCanvas,
+#thermalCanvas,
+#ditherCanvas {
     display: block;
     max-width: 90%;
     max-height: 90%;

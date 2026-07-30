@@ -135,7 +135,6 @@ export default {
                 }
                 .dither-canvas-wrapper {
                     display: inline-block;
-                    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
                     background: transparent;
                     transform-origin: center center;
                 }

@@ -34,6 +34,7 @@ export default {
                         <option value="inferno">Inferno</option>
                         <option value="arctic">Arctic</option>
                         <option value="grayscale">White Hot</option>
+                        <option value="vibrant">Vibrant</option>
                     </select>
                 </div>
                 <label class="toggle-row" for="thermalAutoLevels">
@@ -77,7 +78,7 @@ export default {
         if (!document.getElementById('thermal-tool-styles')) {
             const style = document.createElement('style');
             style.id = 'thermal-tool-styles';
-            style.textContent = `.thermal-preview { width:100%; height:100%; display:flex; align-items:center; justify-content:center; overflow:hidden; cursor:grab; } .thermal-preview:active { cursor:grabbing; } .thermal-canvas-wrapper { display:inline-block; box-shadow:0 4px 20px rgba(0,0,0,.15); transform-origin:center; } #thermalCanvas { display:block; max-width:100%; max-height:100%; }`;
+            style.textContent = `.thermal-preview { width:100%; height:100%; display:flex; align-items:center; justify-content:center; overflow:hidden; cursor:grab; } .thermal-preview:active { cursor:grabbing; } .thermal-canvas-wrapper { display:inline-block; transform-origin:center; } #thermalCanvas { display:block; max-width:100%; max-height:100%; }`;
             document.head.appendChild(style);
         }
         animate('#thermalPreview', { opacity: [0, 1], scale: [0.97, 1] }, { duration: 0.5, easing: [0.05, 0.7, 0.1, 1] });
