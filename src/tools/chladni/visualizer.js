@@ -1,3 +1,5 @@
+import { showLargeExportWarning } from '../../utils/export-warning.js';
+
 export class ChladniVisualizer {
     constructor(canvas) {
         this.canvas = canvas;
@@ -170,7 +172,13 @@ export class ChladniVisualizer {
         }
     }
 
-    exportToSVG() {
+    async exportToSVG() {
+        const particleCount = this.particles.length;
+        if (particleCount > 8000) {
+            const proceed = await showLargeExportWarning(particleCount, 'particles');
+            if (!proceed) return null;
+        }
+
         const width = this.canvas.width;
         const height = this.canvas.height;
         let svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}">\n`;

@@ -1,3 +1,5 @@
+import { showLargeExportWarning } from '../../utils/export-warning.js';
+
 function hexToRgb(hex) {
     const h = hex.replace('#', '');
     const full = h.length === 3 ? h.split('').map(c => c + c).join('') : h;
@@ -450,69 +452,7 @@ export class MatrixVisualizer {
 
     // --- Export -------------------------------------------------------------
 
-    async _showWarningModal(message) {
-        return new Promise((resolve) => {
-            const overlay = document.createElement('div');
-            overlay.className = 'tools-modal-overlay active';
-            overlay.style.zIndex = '9999';
-            overlay.style.alignItems = 'center'; // Center vertically
-
-            const modalContent = document.createElement('div');
-            modalContent.className = 'tools-modal-content panel';
-            modalContent.style.maxWidth = '400px';
-            modalContent.style.padding = '24px';
-
-            const header = document.createElement('div');
-            header.className = 'tools-modal-header';
-            header.style.marginBottom = '16px';
-
-            const title = document.createElement('h2');
-            title.textContent = 'Large export warning';
-
-            header.appendChild(title);
-
-            const body = document.createElement('div');
-            body.className = 'info-modal-body';
-            body.style.fontSize = '14px';
-            body.style.color = 'var(--text-secondary)';
-            body.style.lineHeight = '1.6';
-            body.style.marginBottom = '24px';
-            body.textContent = message;
-
-            const buttonRow = document.createElement('div');
-            buttonRow.style.display = 'flex';
-            buttonRow.style.gap = '12px';
-            buttonRow.style.justifyContent = 'flex-end';
-
-            const cancelBtn = document.createElement('button');
-            cancelBtn.className = 'notion-btn notion-btn-tertiary';
-            cancelBtn.textContent = 'Cancel';
-
-            const proceedBtn = document.createElement('button');
-            proceedBtn.className = 'notion-btn notion-btn-primary';
-            proceedBtn.textContent = 'Proceed';
-
-            buttonRow.appendChild(cancelBtn);
-            buttonRow.appendChild(proceedBtn);
-
-            modalContent.appendChild(header);
-            modalContent.appendChild(body);
-            modalContent.appendChild(buttonRow);
-            overlay.appendChild(modalContent);
-            document.body.appendChild(overlay);
-
-            const cleanup = () => {
-                document.body.removeChild(overlay);
-            };
-
-            const cancel = () => { cleanup(); resolve(false); };
-            const proceed = () => { cleanup(); resolve(true); };
-
-            cancelBtn.onclick = cancel;
-            overlay.onclick = (e) => { if (e.target === overlay) cancel(); };
-            proceedBtn.onclick = proceed;
-        });
-    }
+    // _showWarningModal removed, now using shared utility
 
     async exportToSVG() {
         if (!this.mediaType || !this.activeImage) return null;
@@ -530,7 +470,7 @@ export class MatrixVisualizer {
         const estimatedShapes = cols * rows;
 
         if (estimatedShapes > 8000) {
-            const proceed = await this._showWarningModal(`This export will generate an SVG with approximately ${estimatedShapes} shapes. The file may be very heavy and could take a while to render or open in design software. Do you want to proceed?`);
+            const proceed = await showLargeExportWarning(estimatedShapes, 'shapes');
             if (!proceed) return null;
         }
 

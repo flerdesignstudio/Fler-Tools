@@ -1,3 +1,5 @@
+import { showLargeExportWarning } from '../../utils/export-warning.js';
+
 export class CellsVisualizer {
     constructor(canvas) {
         this.canvas = canvas;
@@ -266,7 +268,13 @@ export class CellsVisualizer {
         }
     }
 
-    exportToSVG() {
+    async exportToSVG() {
+        const cellCount = this.cells.length;
+        if (cellCount > 2000) {
+            const proceed = await showLargeExportWarning(cellCount, 'polygons');
+            if (!proceed) return null;
+        }
+
         const width = this.canvas.width;
         const height = this.canvas.height;
         let svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}">\n`;

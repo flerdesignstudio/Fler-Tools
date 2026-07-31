@@ -1,3 +1,5 @@
+import { showLargeExportWarning } from '../../utils/export-warning.js';
+
 // Math helpers for Hydrogen Wavefunctions
 
 function laguerre(k, alpha, x) {
@@ -452,7 +454,13 @@ export class HydrogenVisualizer {
         document.body.removeChild(a);
     }
 
-    exportToSVG() {
+    async exportToSVG() {
+        const targetPts = this.config.accumulate ? this.accumulatedParticles : this.particles;
+        if (targetPts.length > 8000) {
+            const proceed = await showLargeExportWarning(targetPts.length, 'points');
+            if (!proceed) return null;
+        }
+
         const width = this.canvas.width;
         const height = this.canvas.height;
         let svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}">\n`;
@@ -463,8 +471,6 @@ export class HydrogenVisualizer {
         const r = this.config.particleSize;
         const optLevels = { 1: 1.0, 2: 2.0, 3: 3.5, 4: 6.0 };
         const optScale = optLevels[this.config.svgOptimization || 3];
-
-        const targetPts = this.config.accumulate ? this.accumulatedParticles : this.particles;
 
         // 1. Spatial Binning to eliminate overdraw
         const cellSize = Math.max(1, r * 1.5 * optScale);

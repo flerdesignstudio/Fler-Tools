@@ -1,3 +1,5 @@
+import { showLargeExportWarning } from '../../utils/export-warning.js';
+
 export class AsciiVisualizer {
     static CHAR_SETS = {
         alphanumeric: " WM$08ZEXCVs+=~-.",
@@ -170,7 +172,7 @@ export class AsciiVisualizer {
         document.body.removeChild(a);
     }
 
-    exportToSVG() {
+    async exportToSVG() {
         if (!this._lastSampleWidth || !this._lastSampleHeight) return '';
 
         const { bgColor, textColor, fontFamily, charsetKey, customEmoji } = this.config;
@@ -186,6 +188,12 @@ export class AsciiVisualizer {
         const cellWidth = this.canvas.width / sampleWidth;
         const cellHeight = this.canvas.height / sampleHeight;
         const fontSize = cellHeight * 1.15;
+
+        const textNodes = sampleWidth * sampleHeight;
+        if (textNodes > 8000) {
+            const proceed = await showLargeExportWarning(textNodes, 'characters');
+            if (!proceed) return null;
+        }
 
         let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${this.canvas.width}" height="${this.canvas.height}">\n`;
         svg += `<rect width="100%" height="100%" fill="${bgColor}"/>\n`;

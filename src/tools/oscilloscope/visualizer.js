@@ -1,3 +1,5 @@
+import { showLargeExportWarning } from '../../utils/export-warning.js';
+
 export class OscilloscopeVisualizer {
     constructor(canvas) {
         this.canvas = canvas;
@@ -162,7 +164,13 @@ export class OscilloscopeVisualizer {
         }
     }
 
-    exportToSVG() {
+    async exportToSVG() {
+        const particleCount = this.particles.length;
+        if (particleCount > 8000) {
+            const proceed = await showLargeExportWarning(particleCount, 'points');
+            if (!proceed) return null;
+        }
+
         const width = this.canvas.width;
         const height = this.canvas.height;
         let svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}">\n`;
@@ -186,7 +194,7 @@ export class OscilloscopeVisualizer {
             const r = this.config.particleSize;
             const xMinus = (parseFloat(p.x) - r).toFixed(2);
             const xPlus = (parseFloat(p.x) + r).toFixed(2);
-            pathData += `M ${xMinus} ${y} A ${r} ${r} 0 1 0 ${xPlus} ${y} A ${r} ${r} 0 1 0 ${xMinus} ${y} `;
+            pathData += `M ${xMinus} ${y} A ${r} ${r} 0 1 0 ${xPlus} ${y} A ${r} ${r} 0 1 0 ${xMinus} ${y}\n`;
         }
         svgContent += `  <path d="${pathData.trim()}" fill="${fillStyle}" />\n`;
         svgContent += `</svg>`;
