@@ -49,7 +49,18 @@ export default {
                         <label for="ditherResolution">Resolution Width</label>
                         <span id="ditherResVal" aria-live="polite">400px</span>
                     </div>
-                    <input type="range" id="ditherResolution" min="50" max="1200" step="10" value="400" class="notion-slider">
+                    <input type="range" id="ditherResolution" min="12" max="1200" step="1" value="400" class="notion-slider">
+                </div>
+                <label class="toggle-row" for="ditherPixelLogoMode" style="margin-top: 8px;">
+                    <input type="checkbox" id="ditherPixelLogoMode" class="notion-checkbox" checked>
+                    <span>Pixel Logo Builder (PNG & SVG)</span>
+                </label>
+                <div class="slider-row" id="ditherAlphaRow">
+                    <div class="slider-header">
+                        <label for="ditherAlphaThreshold">Alpha Cutoff</label>
+                        <span id="ditherAlphaVal" aria-live="polite">128</span>
+                    </div>
+                    <input type="range" id="ditherAlphaThreshold" min="1" max="254" step="1" value="128" class="notion-slider">
                 </div>
 
                 <div class="slider-row">
@@ -75,6 +86,9 @@ export default {
                     <label>Palette</label>
                     <select id="ditherPalette" class="notion-select">
                         <option value="bw">1-Bit B&W</option>
+                        <option value="cobalt-logo">Cobalt Logo</option>
+                        <option value="orange-brand">Orange Brand Logo</option>
+                        <option value="emerald-icon">Emerald Icon Logo</option>
                         <option value="greyscale">4-Tone Greyscale</option>
                         <option value="obra-dinn">Obra Dinn</option>
                         <option value="gameboy">Nintendo Game Boy</option>
@@ -97,7 +111,7 @@ export default {
                     </select>
                 </div>
                 
-                <div class="color-grid" id="ditherCustomColors" style="display: none;">
+                <div class="color-grid" id="ditherCustomColors" style="display: none; margin-top: 10px;">
                     <div class="color-item">
                         <label for="ditherColor1">Dark</label>
                         <div class="color-wrapper"><input type="color" id="ditherColor1" value="#000000"></div>
@@ -138,8 +152,18 @@ export default {
                 }
                 .dither-canvas-wrapper {
                     display: inline-block;
-                    background: transparent;
+                    background-color: #1a1a1c;
+                    background-image: 
+                        linear-gradient(45deg, #222225 25%, transparent 25%), 
+                        linear-gradient(-45deg, #222225 25%, transparent 25%), 
+                        linear-gradient(45deg, transparent 75%, #222225 75%), 
+                        linear-gradient(-45deg, transparent 75%, #222225 75%);
+                    background-size: 20px 20px;
+                    background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
                     transform-origin: center center;
+                    border-radius: 4px;
+                    box-shadow: 0 16px 40px rgba(0,0,0,0.3);
+                    overflow: hidden;
                 }
                 #ditherCanvas {
                     display: block;
@@ -179,6 +203,15 @@ export default {
         });
 
         this._setupListeners();
+        setTimeout(() => this._updateSvgExportButton(), 0);
+    },
+
+    _updateSvgExportButton() {
+        const exportSvgBtn = document.getElementById('exportSvgBtn');
+        if (exportSvgBtn && this._visualizer && this._visualizer.config) {
+            exportSvgBtn.disabled = !this._visualizer.config.pixelLogoMode;
+            exportSvgBtn.title = this._visualizer.config.pixelLogoMode ? '' : 'Enable Pixel Logo Builder mode to export vector SVG';
+        }
     },
 
     _syncUIToVisualizer() {
@@ -192,13 +225,24 @@ export default {
             'ditherAlgorithm': v.config.algorithm,
             'ditherPalette': v.config.paletteKey,
             'ditherColor1': v.config.customColor1,
-            'ditherColor2': v.config.customColor2
+            'ditherColor2': v.config.customColor2,
+            'ditherAlphaThreshold': v.config.alphaThreshold
         };
 
         for (const [id, val] of Object.entries(configMap)) {
             const input = document.getElementById(id);
             if (input) input.value = val;
         }
+
+        const pixelLogoInput = document.getElementById('ditherPixelLogoMode');
+        if (pixelLogoInput) pixelLogoInput.checked = v.config.pixelLogoMode;
+
+        const alphaRow = document.getElementById('ditherAlphaRow');
+        if (alphaRow) alphaRow.style.display = v.config.pixelLogoMode ? '' : 'none';
+        this._updateSvgExportButton();
+
+        const alphaVal = document.getElementById('ditherAlphaVal');
+        if (alphaVal) alphaVal.textContent = v.config.alphaThreshold;
 
         const resVal = document.getElementById('ditherResVal');
         if (resVal) resVal.textContent = v.config.resolution + 'px';
@@ -211,7 +255,7 @@ export default {
 
         const customColors = document.getElementById('ditherCustomColors');
         if (customColors) {
-            customColors.style.display = (v.config.paletteKey === 'custom') ? 'grid' : 'none';
+            customColors.style.display = (v.config.paletteKey === 'custom') ? 'flex' : 'none';
         }
     },
 
@@ -227,12 +271,25 @@ export default {
         this._addListener('ditherPalette', 'change', (e) => {
             const paletteKey = e.target.value;
             this._visualizer.updateConfig({ paletteKey });
-            document.getElementById('ditherCustomColors').style.display = (paletteKey === 'custom') ? 'grid' : 'none';
+            document.getElementById('ditherCustomColors').style.display = (paletteKey === 'custom') ? 'flex' : 'none';
         });
 
         this._addListener('ditherResolution', 'input', (e) => {
             document.getElementById('ditherResVal').textContent = e.target.value + 'px';
             this._visualizer.updateConfig({ resolution: e.target.value });
+        });
+
+        this._addListener('ditherPixelLogoMode', 'change', (e) => {
+            const pixelLogoMode = e.target.checked;
+            this._visualizer.updateConfig({ pixelLogoMode });
+            const alphaRow = document.getElementById('ditherAlphaRow');
+            if (alphaRow) alphaRow.style.display = pixelLogoMode ? '' : 'none';
+            this._updateSvgExportButton();
+        });
+
+        this._addListener('ditherAlphaThreshold', 'input', (e) => {
+            document.getElementById('ditherAlphaVal').textContent = e.target.value;
+            this._visualizer.updateConfig({ alphaThreshold: parseInt(e.target.value, 10) });
         });
 
         this._addListener('ditherBrightness', 'input', (e) => {

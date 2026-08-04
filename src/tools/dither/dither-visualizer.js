@@ -1,6 +1,11 @@
+import { showLargeExportWarning } from '../../utils/export-warning.js';
+
 export class DitherVisualizer {
     static PALETTES = {
         'bw': ['#000000', '#ffffff'],
+        'cobalt-logo': ['#0b38ed', '#dfe6eb'],
+        'orange-brand': ['#eb4000', '#fcebe6'],
+        'emerald-icon': ['#047a40', '#e3f2ea'],
         'greyscale': ['#000000', '#555555', '#aaaaaa', '#ffffff'],
         'obra-dinn': ['#eaffcd', '#35332f'],
         'metallica': ['#000000', '#fcf12a'],
@@ -36,6 +41,8 @@ export class DitherVisualizer {
             resolution: 400,
             brightness: 0,
             contrast: 1,
+            pixelLogoMode: true,
+            alphaThreshold: 128,
             algorithm: 'floyd-steinberg',
             paletteKey: 'bw',
             customColor1: '#000000',
@@ -143,8 +150,12 @@ export class DitherVisualizer {
         this.offscreenCanvas.height = resHeight;
 
         // Draw image downscaled to offscreen canvas
-        this.offscreenCtx.fillStyle = '#ffffff';
-        this.offscreenCtx.fillRect(0, 0, resWidth, resHeight);
+        if (!this.config.pixelLogoMode) {
+            this.offscreenCtx.fillStyle = '#ffffff';
+            this.offscreenCtx.fillRect(0, 0, resWidth, resHeight);
+        } else {
+            this.offscreenCtx.clearRect(0, 0, resWidth, resHeight);
+        }
         this.offscreenCtx.drawImage(this.mediaElement, 0, 0, resWidth, resHeight);
 
         // Get pixel data
@@ -173,6 +184,15 @@ export class DitherVisualizer {
             for (let x = 0; x < width; x++) {
                 const idx = (y * width + x) * 4;
                 const errIdx = (y * width + x) * 3;
+
+                if (this.config.pixelLogoMode) {
+                    if (pixels[idx + 3] < this.config.alphaThreshold) {
+                        pixels[idx + 3] = 0;
+                        continue;
+                    } else {
+                        pixels[idx + 3] = 255;
+                    }
+                }
 
                 let r = pixels[idx] + (errors[errIdx] || 0);
                 let g = pixels[idx + 1] + (errors[errIdx + 1] || 0);
@@ -234,6 +254,78 @@ export class DitherVisualizer {
         }
 
         this.ctx.putImageData(imageData, 0, 0);
+    }
+
+    async exportToSVG() {
+        if (!this.config.pixelLogoMode) {
+            alert('SVG export is only supported when Pixel Logo Builder Mode is enabled.');
+            return null;
+        }
+
+        const width = this.canvas.width;
+        const height = this.canvas.height;
+        const imageData = this.ctx.getImageData(0, 0, width, height);
+        const data = imageData.data;
+        const colorLayers = {};
+        let totalBlocks = 0;
+
+        const toHex = (c) => ('0' + c.toString(16)).slice(-2);
+
+        for (let y = 0; y < height; y++) {
+            let x = 0;
+            while (x < width) {
+                const idx = (y * width + x) * 4;
+                if (data[idx + 3] === 0) {
+                    x++;
+                    continue;
+                }
+                const r = data[idx], g = data[idx + 1], b = data[idx + 2];
+                const color = `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+                const startX = x;
+                let runWidth = 1;
+                x++;
+
+                while (x < width) {
+                    const nextIdx = (y * width + x) * 4;
+                    if (data[nextIdx + 3] === 0) break;
+                    if (data[nextIdx] === r && data[nextIdx + 1] === g && data[nextIdx + 2] === b) {
+                        runWidth++;
+                        x++;
+                    } else {
+                        break;
+                    }
+                }
+
+                if (!colorLayers[color]) {
+                    colorLayers[color] = [];
+                }
+                colorLayers[color].push(`M${startX} ${y}h${runWidth}v1h-${runWidth}Z`);
+                totalBlocks++;
+            }
+        }
+
+        if (totalBlocks > 8000) {
+            const proceed = await showLargeExportWarning(totalBlocks, 'vector segments');
+            if (!proceed) return null;
+        }
+
+        const scale = Math.max(1, Math.floor(800 / width));
+        const svgWidth = width * scale;
+        const svgHeight = height * scale;
+
+        let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${svgWidth}" height="${svgHeight}" shape-rendering="crispEdges">\n`;
+
+        let layerIndex = 1;
+        for (const [color, pathChunks] of Object.entries(colorLayers)) {
+            const hexClean = color.replace('#', '');
+            svg += `  <g id="Layer_${layerIndex}_Color_${hexClean}" fill="${color}">\n`;
+            svg += `    <path d="${pathChunks.join(' ')}" />\n`;
+            svg += `  </g>\n`;
+            layerIndex++;
+        }
+
+        svg += `</svg>`;
+        return svg;
     }
 
     exportToPNG(filename) {

@@ -38,7 +38,15 @@ export default {
                         <option value="arctic">Arctic</option>
                         <option value="grayscale">White Hot</option>
                         <option value="vibrant">Vibrant</option>
+                        <option value="custom">Custom Colors</option>
                     </select>
+                </div>
+                <div class="color-grid" id="thermalCustomColors" style="display: none; margin-top: 10px;">
+                    <div class="color-item"><label for="thermalColor0">0%</label><div class="color-wrapper"><input type="color" id="thermalColor0" value="#000004"></div></div>
+                    <div class="color-item"><label for="thermalColor1">25%</label><div class="color-wrapper"><input type="color" id="thermalColor1" value="#320a5f"></div></div>
+                    <div class="color-item"><label for="thermalColor2">50%</label><div class="color-wrapper"><input type="color" id="thermalColor2" value="#bb3754"></div></div>
+                    <div class="color-item"><label for="thermalColor3">75%</label><div class="color-wrapper"><input type="color" id="thermalColor3" value="#ed6925"></div></div>
+                    <div class="color-item"><label for="thermalColor4">100%</label><div class="color-wrapper"><input type="color" id="thermalColor4" value="#fcffa4"></div></div>
                 </div>
                 <label class="toggle-row" for="thermalAutoLevels">
                     <input type="checkbox" id="thermalAutoLevels" class="notion-checkbox" checked>
@@ -117,7 +125,22 @@ export default {
     },
 
     _setupListeners() {
-        this._addListener('thermalPalette', 'change', (event) => this._visualizer.updateConfig({ paletteKey: event.target.value }));
+        this._addListener('thermalPalette', 'change', (event) => {
+            const paletteKey = event.target.value;
+            this._visualizer.updateConfig({ paletteKey });
+            const customColorsEl = document.getElementById('thermalCustomColors');
+            if (customColorsEl) customColorsEl.style.display = (paletteKey === 'custom') ? 'flex' : 'none';
+        });
+        for (let i = 0; i < 5; i++) {
+            this._addListener(`thermalColor${i}`, 'input', () => {
+                const colors = [];
+                for (let j = 0; j < 5; j++) {
+                    const input = document.getElementById(`thermalColor${j}`);
+                    colors.push(input ? input.value : '#000000');
+                }
+                this._visualizer.updateConfig({ customColors: colors });
+            });
+        }
         this._addListener('thermalAutoLevels', 'change', (event) => {
             this._setLevelControlsEnabled(!event.target.checked);
             this._visualizer.updateConfig({ autoLevels: event.target.checked });

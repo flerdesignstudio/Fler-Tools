@@ -30,6 +30,7 @@ export class ThermalVisualizer {
         this.config = {
             resolution: 800,
             paletteKey: 'classic',
+            customColors: ['#000004', '#320a5f', '#bb3754', '#ed6925', '#fcffa4'],
             autoLevels: true,
             blackPoint: 0,
             whitePoint: 100,
@@ -86,6 +87,9 @@ export class ThermalVisualizer {
     }
 
     _paletteRgb() {
+        if (this.config.paletteKey === 'custom' && Array.isArray(this.config.customColors)) {
+            return this.config.customColors.map((color) => this._hexToRgb(color));
+        }
         const palette = ThermalVisualizer.PALETTES[this.config.paletteKey] || ThermalVisualizer.PALETTES.classic;
         return palette.map((color) => this._hexToRgb(color));
     }
