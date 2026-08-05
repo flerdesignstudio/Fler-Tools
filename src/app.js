@@ -1,28 +1,29 @@
 import { injectSpeedInsights } from '@vercel/speed-insights';
 import { inject } from '@vercel/analytics';
-import chladniTool from './tools/chladni/chladni-ui.js';
-import hydrogenTool from './tools/hydrogen/hydrogen-ui.js';
-import oscilloscopeTool from './tools/oscilloscope/oscilloscope-ui.js';
-import asciiTool from './tools/ascii/ascii-ui.js';
-import ditherTool from './tools/dither/dither-ui.js';
-import cellsTool from './tools/cells/cells-ui.js';
-import thermalTool from './tools/thermal/thermal-ui.js';
-import matrixTool from './tools/matrix/matrix-ui.js';
+import chladniIcon from './Assets/chladni.svg?raw';
+import hydrogenIcon from './Assets/hydrogen.svg?raw';
+import oscilloscopeIcon from './Assets/oscilloscope.svg?raw';
+import asciiIcon from './Assets/ascii.svg?raw';
+import ditherIcon from './Assets/dither.svg?raw';
+import cellsIcon from './Assets/cells.svg?raw';
+import thermalIcon from './Assets/thermal.svg?raw';
+import matrixIcon from './Assets/matrix.svg?raw';
+import { renderToolErrorUI, setupGlobalExceptionCatchers } from './utils/error-handler.js';
 
 // Inizializza Vercel Speed Insights e Web Analytics
 injectSpeedInsights();
 inject();
 
-// --- Tool Registry ---
+// --- Dynamic Tool Registry ---
 export const tools = {
-    [chladniTool.id]: chladniTool,
-    [hydrogenTool.id]: hydrogenTool,
-    [oscilloscopeTool.id]: oscilloscopeTool,
-    [asciiTool.id]: asciiTool,
-    [ditherTool.id]: ditherTool,
-    [cellsTool.id]: cellsTool,
-    [thermalTool.id]: thermalTool,
-    [matrixTool.id]: matrixTool
+    chladni: { id: 'chladni', label: 'Chladni', icon: chladniIcon, loader: () => import('./tools/chladni/chladni-ui.js') },
+    hydrogen: { id: 'hydrogen', label: 'Hydrogen', icon: hydrogenIcon, loader: () => import('./tools/hydrogen/hydrogen-ui.js') },
+    oscilloscope: { id: 'oscilloscope', label: 'Oscilloscope', icon: oscilloscopeIcon, loader: () => import('./tools/oscilloscope/oscilloscope-ui.js') },
+    ascii: { id: 'ascii', label: 'ASCII', icon: asciiIcon, loader: () => import('./tools/ascii/ascii-ui.js') },
+    dither: { id: 'dither', label: 'Dither', icon: ditherIcon, loader: () => import('./tools/dither/dither-ui.js') },
+    cells: { id: 'cells', label: 'Cells', icon: cellsIcon, loader: () => import('./tools/cells/cells-ui.js') },
+    thermal: { id: 'thermal', label: 'Thermal', icon: thermalIcon, loader: () => import('./tools/thermal/thermal-ui.js') },
+    matrix: { id: 'matrix', label: 'Matrix', icon: matrixIcon, loader: () => import('./tools/matrix/matrix-ui.js') }
 };
 
 import { animate } from 'motion';
@@ -34,12 +35,12 @@ function renderNavigation(activeToolId) {
     const navMenu = document.getElementById('app-navigation');
     if (!navMenu) return;
     navMenu.innerHTML = '';
-    
+
     const toolsArray = Object.values(tools);
     const maxNavTools = 3;
     const activeTool = tools[activeToolId];
     if (!activeTool) return;
-    
+
     // Initialize state on first run
     if (!navToolIds) {
         navToolIds = toolsArray.slice(0, maxNavTools).map(t => t.id);
@@ -48,7 +49,7 @@ function renderNavigation(activeToolId) {
 
     // Update MRU queue
     mruQueue = [activeToolId, ...mruQueue.filter(id => id !== activeToolId)];
-    
+
     // Check if we need to replace a tool in the visible nav
     if (!navToolIds.includes(activeToolId)) {
         // Find the least recently used tool that is currently in navToolIds
@@ -59,7 +60,7 @@ function renderNavigation(activeToolId) {
                 break;
             }
         }
-        
+
         // Replace victimId with activeToolId in navToolIds
         const victimIndex = navToolIds.indexOf(victimId);
         if (victimIndex !== -1) {
@@ -70,7 +71,7 @@ function renderNavigation(activeToolId) {
             if (navToolIds.length > maxNavTools) navToolIds.pop();
         }
     }
-    
+
     const navTools = navToolIds.map(id => tools[id]).filter(Boolean);
 
     navTools.forEach(tool => {
@@ -92,7 +93,10 @@ function renderNavigation(activeToolId) {
         moreBtn.title = "More Tools";
         moreBtn.onclick = () => {
             const overlay = document.getElementById('tools-modal-overlay');
-            if (overlay) overlay.classList.add('active');
+            if (overlay) {
+                overlay.classList.add('active');
+                overlay.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')?.focus();
+            }
         };
         navMenu.appendChild(moreBtn);
     }
@@ -101,9 +105,9 @@ function renderNavigation(activeToolId) {
 let currentTool = null;
 
 export const loadTool = async (toolId) => {
-    const tool = tools[toolId];
-    if (!tool) return;
-    if (currentTool === tool) return; // already loaded
+    const toolMeta = tools[toolId];
+    if (!toolMeta) return;
+    if (currentTool && currentTool.id === toolId) return; // already loaded
 
     const sidebarContainer = document.getElementById('tool-sidebar-container');
     const mainContainer = document.getElementById('tool-main-container');
@@ -114,7 +118,7 @@ export const loadTool = async (toolId) => {
         await Promise.all([
             animate(sidebarContainer, { opacity: 0, x: -10 }, { duration: 0.15, easing: [0.3, 0, 1, 1] }).finished,
             animate(mainContainer, { opacity: 0, scale: 0.98 }, { duration: 0.15, easing: [0.3, 0, 1, 1] }).finished
-        ]).catch(() => {});
+        ]).catch(() => { });
 
         if (currentTool.destroy) {
             currentTool.destroy();
@@ -130,12 +134,53 @@ export const loadTool = async (toolId) => {
     mainContainer.style.opacity = 1;
     mainContainer.style.transform = 'none';
 
-    // 2. Initialize new tool
-    currentTool = tool;
-    if (tool.init) {
-        tool.init(sidebarContainer, mainContainer);
+    // 2. Initialize new tool with resilient error boundary & dynamic lazy loading
+    try {
+        if (!toolMeta._module) {
+            // Render Dot Matrix Loading animation (Echo Ring / @dotmatrix/dotm-square-11 style) during async fetch
+            let gridHtml = '';
+            for (let r = 0; r < 5; r++) {
+                for (let c = 0; c < 5; c++) {
+                    const ring = Math.abs(r - 2) + Math.abs(c - 2);
+                    gridHtml += `<span class="dmx-dot" style="--ring: ${ring};" aria-hidden="true"></span>`;
+                }
+            }
+            mainContainer.innerHTML = `
+                <div class="dmx-loader-container" role="status" aria-live="polite">
+                    <div class="dmx-grid-5x5">
+                        ${gridHtml}
+                    </div>
+                    <div class="dmx-loading-label">Loading ${toolMeta.label || toolId}...</div>
+                </div>
+            `;
+            if (sidebarContainer) {
+                sidebarContainer.innerHTML = '';
+            }
+
+            // Ensure the loading animation displays for at least 1000ms to prevent visual flashing/stutter
+            const [mod] = await Promise.all([
+                toolMeta.loader(),
+                new Promise(resolve => setTimeout(resolve, 1500))
+            ]);
+            toolMeta._module = mod.default || mod;
+        }
+
+        const toolInstance = toolMeta._module;
+        currentTool = toolInstance;
+
+        if (toolInstance.init) {
+            toolInstance.init(sidebarContainer, mainContainer);
+        }
+    } catch (error) {
+        console.error(`[Fler Tools - Recovery] Failed to load or initialize tool "${toolMeta.label || toolId}":`, error);
+        renderToolErrorUI(mainContainer, sidebarContainer, toolMeta.label || toolId, error, () => {
+            // Safety fallback to Chladni
+            loadTool('chladni');
+        });
+        updateExportButtonsState();
+        return;
     }
-    
+
     // 3. Update export buttons state
     updateExportButtonsState();
 };
@@ -180,11 +225,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeBtn = document.getElementById('closeToolsModalBtn');
     const modalOverlay = document.getElementById('tools-modal-overlay');
     if (closeBtn && modalOverlay) {
-        closeBtn.onclick = () => modalOverlay.classList.remove('active');
+        closeBtn.onclick = () => {
+            modalOverlay.classList.remove('active');
+            document.querySelector('.more-tools-btn')?.focus();
+        };
     }
     if (modalOverlay) {
         modalOverlay.onclick = (e) => {
-            if (e.target === modalOverlay) modalOverlay.classList.remove('active');
+            if (e.target === modalOverlay) {
+                modalOverlay.classList.remove('active');
+                document.querySelector('.more-tools-btn')?.focus();
+            }
         };
     }
 
@@ -235,7 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const focusable = Array.from(modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'))
                 .filter(el => !el.hasAttribute('disabled') && el.offsetParent !== null);
             if (focusable.length === 0) return;
-            
+
             const first = focusable[0];
             const last = focusable[focusable.length - 1];
 
@@ -256,8 +307,11 @@ document.addEventListener('DOMContentLoaded', () => {
     trapFocus(modalOverlay);
     trapFocus(infoModalOverlay);
 
+    // Setup global exception catchers for resiliency
+    setupGlobalExceptionCatchers();
+
     // Load initial tool (Chladni)
-    loadTool(chladniTool.id);
+    loadTool('chladni');
 
     const fullscreenBtn = document.getElementById('fullscreenBtn');
     fullscreenBtn.addEventListener('click', () => {
@@ -281,7 +335,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (currentTool && currentTool._visualizer && currentTool._visualizer.exportToSVG) {
             const svgString = await currentTool._visualizer.exportToSVG();
             if (!svgString) return;
-            
+
             const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');

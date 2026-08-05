@@ -82,9 +82,9 @@
         <!-- Top Center: Navigation Bar -->
         <div class="nav-bar-wrapper">
             <div class="nav-bar-spacer-left"></div>
-            <div class="nav-bar-frame panel" id="app-navigation">
+            <nav aria-label="Tools navigation" class="nav-bar-frame panel" id="app-navigation">
                 <!-- Dynamic Navigation Buttons Injected Here -->
-            </div>
+            </nav>
             <div class="nav-bar-spacer-right"></div>
         </div>
 
@@ -108,9 +108,9 @@
 
     <!-- Tools Modal Overlay -->
     <div id="tools-modal-overlay" class="tools-modal-overlay">
-        <div id="tools-modal-content" class="tools-modal-content panel">
+        <div id="tools-modal-content" class="tools-modal-content panel" role="dialog" aria-modal="true" aria-labelledby="tools-modal-title">
             <div class="tools-modal-header">
-                <h2>All Tools</h2>
+                <h2 id="tools-modal-title">All Tools</h2>
                 <button class="notion-btn notion-btn-secondary close-modal-btn" id="closeToolsModalBtn">
                     <span class="material-symbols-outlined">close</span>
                 </button>
@@ -123,9 +123,9 @@
 
     <!-- Info Modal Overlay -->
     <div id="info-modal-overlay" class="tools-modal-overlay">
-        <div id="info-modal-content" class="tools-modal-content panel" style="max-width: 500px; padding: 24px;">
+        <div id="info-modal-content" class="tools-modal-content panel" style="max-width: 500px; padding: 24px;" role="dialog" aria-modal="true" aria-labelledby="info-modal-title">
             <div class="tools-modal-header" style="margin-bottom: 16px;">
-                <h2>About Fler Tools</h2>
+                <h2 id="info-modal-title">About Fler Tools</h2>
                 <button class="notion-btn notion-btn-secondary close-modal-btn" id="closeInfoModalBtn">
                     <span class="material-symbols-outlined">close</span>
                 </button>
