@@ -35,7 +35,31 @@ export class CellsVisualizer {
         this.isGenerating = false;
         this.pendingRegen = false;
 
+        this.isPlaying = true;
+        this.isLooping = true;
+        this.speed = 1.0;
+
         this.generateMesh();
+    }
+
+    play() {
+        this.isPlaying = true;
+    }
+
+    pause() {
+        this.isPlaying = false;
+    }
+
+    restart() {
+        this.generateMesh();
+    }
+
+    setLoop(loop) {
+        this.isLooping = loop;
+    }
+
+    setSpeed(speed) {
+        this.speed = speed;
     }
 
     setAspectRatio(ratioStr) {
@@ -235,35 +259,51 @@ export class CellsVisualizer {
         this.draw();
     }
 
+    beginExport() {
+        this._isExporting = true;
+    }
 
+    endExport() {
+        this._isExporting = false;
+    }
+
+    async renderFrame(timeSec, targetCanvas = null) {
+        const destCanvas = targetCanvas || this.canvas;
+        const destCtx = destCanvas.getContext('2d');
+        this._drawFrame(destCtx, destCanvas.width, destCanvas.height);
+    }
 
     draw() {
-        // Clear background
-        this.ctx.fillStyle = this.config.bgColor;
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        this._drawFrame(this.ctx, this.canvas.width, this.canvas.height);
+    }
 
-        // Draw cells
+    _drawFrame(ctx, width, height) {
+        ctx.fillStyle = this.config.bgColor;
+        ctx.fillRect(0, 0, width, height);
+
         if (this.config.drawMode === 'fill') {
-            this.ctx.fillStyle = this.config.cellColor;
+            ctx.fillStyle = this.config.cellColor;
         } else {
-            this.ctx.strokeStyle = this.config.cellColor;
-            this.ctx.lineWidth = this.config.strokeWidth;
-            this.ctx.lineJoin = 'round';
+            ctx.strokeStyle = this.config.cellColor;
+            ctx.lineWidth = this.config.strokeWidth;
         }
 
         for (let cell of this.cells) {
-            if (cell.length === 0) continue;
-            this.ctx.beginPath();
-            this.ctx.moveTo(cell[0].x, cell[0].y);
+            if (cell.length < 3) continue;
+
+            ctx.beginPath();
+            ctx.moveTo(cell[0].x, cell[0].y);
+
             for (let i = 1; i < cell.length; i++) {
-                this.ctx.lineTo(cell[i].x, cell[i].y);
+                ctx.lineTo(cell[i].x, cell[i].y);
             }
-            this.ctx.closePath();
-            
+
+            ctx.closePath();
+
             if (this.config.drawMode === 'fill') {
-                this.ctx.fill();
+                ctx.fill();
             } else {
-                this.ctx.stroke();
+                ctx.stroke();
             }
         }
     }

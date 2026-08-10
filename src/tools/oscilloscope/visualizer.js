@@ -30,6 +30,8 @@ export class OscilloscopeVisualizer {
         };
 
         this.isPlaying = true;
+        this.engineSpeed = 1.0;
+        this.qualityMultiplier = 1.0;
         this.animationFrameId = null;
         this.time = 0;
 
@@ -42,6 +44,13 @@ export class OscilloscopeVisualizer {
 
     setAspectRatio(ratioStr) {
         this.aspectRatio = ratioStr;
+        this.resize();
+    }
+
+    setQuality(qualityStr) {
+        if (qualityStr === 'Low') this.qualityMultiplier = 0.25;
+        else if (qualityStr === 'Med') this.qualityMultiplier = 0.5;
+        else this.qualityMultiplier = 1.0;
         this.resize();
     }
 
@@ -65,11 +74,11 @@ export class OscilloscopeVisualizer {
             '4:3': { w: 1600, h: 1200 }
         };
 
-        const dims = ratios[this.aspectRatio] || ratios['1:1'];
+        const baseDims = ratios[this.aspectRatio] || ratios['1:1'];
 
-        this.canvas.width = dims.w;
-        this.canvas.height = dims.h;
-        this.canvas.style.aspectRatio = `${dims.w} / ${dims.h}`;
+        this.canvas.width = Math.round(baseDims.w * this.qualityMultiplier);
+        this.canvas.height = Math.round(baseDims.h * this.qualityMultiplier);
+        this.canvas.style.aspectRatio = `${baseDims.w} / ${baseDims.h}`;
         this.canvas.style.width = '100%';
         this.canvas.style.height = '100%';
         this.canvas.style.objectFit = 'contain';
@@ -90,18 +99,63 @@ export class OscilloscopeVisualizer {
         }
     }
 
-    togglePlay() {
-        this.isPlaying = !this.isPlaying;
-        if (this.isPlaying) {
+    play() {
+        if (!this.isPlaying) {
+            this.isPlaying = true;
             this.animate();
         }
+    }
+
+    pause() {
+        this.isPlaying = false;
+        if (this.animationFrameId) {
+            cancelAnimationFrame(this.animationFrameId);
+            this.animationFrameId = null;
+        }
+    }
+    
+    restart() {
+        this.time = 0;
+        this.initParticles();
+    }
+    
+    setLoop(loop) {
+        this.isLooping = loop;
+    }
+
+    setSpeed(speed) {
+        this.engineSpeed = speed;
+    }
+
+    beginExport() {
+        this._isExporting = true;
+    }
+
+    endExport() {
+        this._isExporting = false;
+    }
+
+    async renderFrame(timeSec, targetCanvas = null) {
+        this.time = timeSec * this.config.speed * 3.0 * this.engineSpeed;
+        const destCanvas = targetCanvas || this.canvas;
+        const destCtx = destCanvas.getContext('2d');
+        this._drawFrame(destCtx, destCanvas.width, destCanvas.height);
     }
 
     animate(singleFrame = false) {
         if (!this.isPlaying && !singleFrame) return;
 
+        this.time += this.config.speed * 0.05 * this.engineSpeed;
+        this._drawFrame(this.ctx, this.canvas.width, this.canvas.height);
+
+        if (!singleFrame) {
+            this.animationFrameId = requestAnimationFrame(() => this.animate());
+        }
+    }
+
+    _drawFrame(ctx, width, height) {
         const hexToRgba = (hex, alpha) => {
-            if(!hex) return `rgba(0,0,0,${alpha})`;
+            if (!hex) return `rgba(0,0,0,${alpha})`;
             const r = parseInt(hex.slice(1, 3), 16) || 0;
             const g = parseInt(hex.slice(3, 5), 16) || 0;
             const b = parseInt(hex.slice(5, 7), 16) || 0;
@@ -109,29 +163,26 @@ export class OscilloscopeVisualizer {
         };
 
         if (this.config.useBgGradient) {
-            const gradient = this.ctx.createLinearGradient(0, 0, 0, this.canvas.height);
+            const gradient = ctx.createLinearGradient(0, 0, 0, height);
             gradient.addColorStop(0, hexToRgba(this.config.bgGradStart, 0.3));
             gradient.addColorStop(1, hexToRgba(this.config.bgGradEnd, 0.3));
-            this.ctx.fillStyle = gradient;
+            ctx.fillStyle = gradient;
         } else {
-            this.ctx.fillStyle = hexToRgba(this.config.trailColor, 0.3);
+            ctx.fillStyle = hexToRgba(this.config.trailColor, 0.3);
         }
 
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        ctx.fillRect(0, 0, width, height);
 
-        // Set Particle Color
         if (this.config.useGradient) {
-            const gradient = this.ctx.createLinearGradient(0, 0, this.canvas.width, this.canvas.height);
+            const gradient = ctx.createLinearGradient(0, 0, width, height);
             gradient.addColorStop(0, this.config.particleColor1);
             gradient.addColorStop(1, this.config.particleColor2);
-            this.ctx.fillStyle = gradient;
+            ctx.fillStyle = gradient;
         } else {
-            this.ctx.fillStyle = this.config.particleColor1;
+            ctx.fillStyle = this.config.particleColor1;
         }
 
-        this.ctx.beginPath();
-        
-        this.time += this.config.speed * 0.05; // Animation speed affects how fast particles spin around the path
+        ctx.beginPath();
         const globalPhase = this.config.phase * Math.PI;
 
         let fx = this.config.freqX;
@@ -151,17 +202,13 @@ export class OscilloscopeVisualizer {
             const noiseX = p.noiseX * this.config.thickness;
             const noiseY = p.noiseY * this.config.thickness;
             
-            p.x = (this.canvas.width / 2) + (rawX * this.config.ampX) + noiseX;
-            p.y = (this.canvas.height / 2) - (rawY * this.config.ampY) + noiseY;
+            p.x = (width / 2) + (rawX * this.config.ampX) + noiseX;
+            p.y = (height / 2) - (rawY * this.config.ampY) + noiseY;
 
-            this.ctx.moveTo(p.x + this.config.particleSize, p.y);
-            this.ctx.arc(p.x, p.y, this.config.particleSize, 0, Math.PI * 2);
+            ctx.moveTo(p.x + this.config.particleSize, p.y);
+            ctx.arc(p.x, p.y, this.config.particleSize, 0, Math.PI * 2);
         }
-        this.ctx.fill();
-
-        if (!singleFrame) {
-            this.animationFrameId = requestAnimationFrame(() => this.animate());
-        }
+        ctx.fill();
     }
 
     async exportToSVG() {

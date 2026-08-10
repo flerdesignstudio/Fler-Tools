@@ -11,6 +11,8 @@ export class ChladniVisualizer {
         this.pattern = { n: 3, m: 5, v: 0 };
 
         this.isPlaying = true;
+        this.speed = 1.0;
+        this.qualityMultiplier = 1.0;
         this.animationFrameId = null;
 
         // Customization State
@@ -37,6 +39,13 @@ export class ChladniVisualizer {
         this.resize();
     }
 
+    setQuality(qualityStr) {
+        if (qualityStr === 'Low') this.qualityMultiplier = 0.25;
+        else if (qualityStr === 'Med') this.qualityMultiplier = 0.5;
+        else this.qualityMultiplier = 1.0;
+        this.resize();
+    }
+
     updatePattern(n, m, v) {
         this.pattern = { n, m, v };
     }
@@ -59,14 +68,14 @@ export class ChladniVisualizer {
             '4:3': { w: 1600, h: 1200 }
         };
 
-        const dims = ratios[this.aspectRatio] || ratios['1:1'];
+        const baseDims = ratios[this.aspectRatio] || ratios['1:1'];
 
         // Set the canvas internal resolution
-        this.canvas.width = dims.w;
-        this.canvas.height = dims.h;
+        this.canvas.width = Math.round(baseDims.w * this.qualityMultiplier);
+        this.canvas.height = Math.round(baseDims.h * this.qualityMultiplier);
 
         // Provide inline CSS to enforce the aspect ratio in the DOM
-        this.canvas.style.aspectRatio = `${dims.w} / ${dims.h}`;
+        this.canvas.style.aspectRatio = `${baseDims.w} / ${baseDims.h}`;
 
         // Ensure width/height CSS scales to bounds but maintains ratio
         this.canvas.style.width = '100%';
@@ -108,16 +117,58 @@ export class ChladniVisualizer {
         }
     }
 
-    togglePlay() {
-        this.isPlaying = !this.isPlaying;
-        if (this.isPlaying) {
+    play() {
+        if (!this.isPlaying) {
+            this.isPlaying = true;
             this.animate();
         }
+    }
+
+    pause() {
+        this.isPlaying = false;
+        if (this.animationFrameId) {
+            cancelAnimationFrame(this.animationFrameId);
+            this.animationFrameId = null;
+        }
+    }
+    
+    restart() {
+        this.initParticles();
+    }
+    
+    setLoop(loop) {
+        this.isLooping = loop;
+    }
+
+    setSpeed(speed) {
+        this.speed = speed;
+    }
+
+    beginExport() {
+        this._isExporting = true;
+    }
+
+    endExport() {
+        this._isExporting = false;
+    }
+
+    async renderFrame(timeSec, targetCanvas = null) {
+        const destCanvas = targetCanvas || this.canvas;
+        const destCtx = destCanvas.getContext('2d');
+        this._drawFrame(destCtx, destCanvas.width, destCanvas.height);
     }
 
     animate(singleFrame = false) {
         if (!this.isPlaying && !singleFrame) return;
 
+        this._drawFrame(this.ctx, this.canvas.width, this.canvas.height);
+
+        if (!singleFrame) {
+            this.animationFrameId = requestAnimationFrame(() => this.animate());
+        }
+    }
+
+    _drawFrame(ctx, width, height) {
         const hexToRgba = (hex, alpha) => {
             const r = parseInt(hex.slice(1, 3), 16);
             const g = parseInt(hex.slice(3, 5), 16);
@@ -126,50 +177,44 @@ export class ChladniVisualizer {
         };
 
         if (this.config.useBgGradient) {
-            const gradient = this.ctx.createLinearGradient(0, 0, 0, this.canvas.height);
+            const gradient = ctx.createLinearGradient(0, 0, 0, height);
             gradient.addColorStop(0, hexToRgba(this.config.bgGradStart, 0.2));
             gradient.addColorStop(1, hexToRgba(this.config.bgGradEnd, 0.2));
-            this.ctx.fillStyle = gradient;
+            ctx.fillStyle = gradient;
         } else {
-            this.ctx.fillStyle = hexToRgba(this.config.trailColor, 0.2);
+            ctx.fillStyle = hexToRgba(this.config.trailColor, 0.2);
         }
 
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        ctx.fillRect(0, 0, width, height);
 
-        // Set Particle Color
         if (this.config.useGradient) {
-            const gradient = this.ctx.createLinearGradient(0, 0, this.canvas.width, this.canvas.height);
+            const gradient = ctx.createLinearGradient(0, 0, width, height);
             gradient.addColorStop(0, this.config.particleColor1);
             gradient.addColorStop(1, this.config.particleColor2);
-            this.ctx.fillStyle = gradient;
+            ctx.fillStyle = gradient;
         } else {
-            this.ctx.fillStyle = this.config.particleColor1;
+            ctx.fillStyle = this.config.particleColor1;
         }
 
-        this.ctx.beginPath();
+        ctx.beginPath();
         for (let p of this.particles) {
             const vib = this.getVibration(p.x, p.y, this.pattern.n, this.pattern.m, this.pattern.v);
             const totalVibration = Math.abs(vib);
 
-            const moveAmount = totalVibration * 50 + 1.0;
+            const moveAmount = (totalVibration * 50 + 1.0) * this.speed;
 
             p.x += (Math.random() - 0.5) * moveAmount;
             p.y += (Math.random() - 0.5) * moveAmount;
 
-            // Bounds checking
-            if (p.x < 0) p.x = this.canvas.width;
-            if (p.x > this.canvas.width) p.x = 0;
-            if (p.y < 0) p.y = this.canvas.height;
-            if (p.y > this.canvas.height) p.y = 0;
+            if (p.x < 0) p.x = width;
+            if (p.x > width) p.x = 0;
+            if (p.y < 0) p.y = height;
+            if (p.y > height) p.y = 0;
 
-            this.ctx.moveTo(p.x + this.config.particleSize, p.y);
-            this.ctx.arc(p.x, p.y, this.config.particleSize, 0, Math.PI * 2);
+            ctx.moveTo(p.x + this.config.particleSize, p.y);
+            ctx.arc(p.x, p.y, this.config.particleSize, 0, Math.PI * 2);
         }
-        this.ctx.fill();
-
-        if (!singleFrame) {
-            this.animationFrameId = requestAnimationFrame(() => this.animate());
-        }
+        ctx.fill();
     }
 
     async exportToSVG() {

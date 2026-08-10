@@ -72,7 +72,7 @@
 body {
     font-family: var(--font-family);
     background-color: var(--bg-base);
-    color: var(--text-primary);
+    color: var(--text-secondary);
     overflow: hidden;
     height: 100dvh;
     margin: 0;
@@ -151,11 +151,20 @@ body::before {
     flex: 1;
 }
 
+.branding-frame .group-title {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+    margin: 0 0 16px 0;
+}
+
 .branding-frame .title {
     font-size: 22px;
     font-weight: 600;
     letter-spacing: -0.5px;
-    color: var(--text-primary);
+    color: var(--text-secondary);
     margin: 0;
     flex-shrink: 0;
 }
@@ -229,6 +238,11 @@ body::before {
     align-items: center;
 }
 
+.nav-bar-frame .notion-btn {
+    height: 34px;
+    box-sizing: border-box;
+}
+
 .export-frame {
     bottom: 15px;
     right: 15px;
@@ -238,6 +252,93 @@ body::before {
     padding: 8px 8px;
     align-items: center;
     justify-content: center;
+}
+
+.export-frame button {
+    width: 100%;
+}
+
+.recording-bar-wrapper {
+    position: absolute;
+    bottom: 15px;
+    left: 0;
+    right: 0;
+    display: flex;
+    pointer-events: none;
+    z-index: 20;
+}
+
+.recording-frame {
+    pointer-events: auto;
+    flex: 0 0 auto;
+    position: relative;
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    padding: 8px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+}
+
+.recording-divider {
+    width: 1px;
+    height: 20px;
+    background-color: var(--border-subtle);
+    margin: 0 4px;
+}
+
+.recording-frame .icon-btn {
+    background: var(--bg-button);
+    border: 1px solid var(--border-subtle);
+    padding: 6px;
+}
+
+.recording-frame .icon-btn:hover {
+    background: var(--bg-button-hover);
+}
+
+.recording-frame .record-btn.active {
+    background: var(--text-primary);
+    color: var(--bg-primary);
+}
+
+.recording-frame .record-btn.active .material-symbols-outlined {
+    color: #ff3b30 !important;
+}
+
+.recording-frame .icon-btn {
+    border-radius: var(--radius-md);
+}
+
+.recording-frame .material-symbols-outlined {
+    font-size: 20px;
+}
+
+.recording-frame .text-btn {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    min-width: 44px;
+}
+
+.recording-frame .stat-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.recording-frame .timer-text {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    min-width: 44px;
+    text-align: center;
+}
+
+.recording-frame .stat-icon {
+    color: var(--text-secondary);
+    font-size: 18px;
 }
 
 .top-right-actions {
@@ -257,8 +358,8 @@ body::before {
     justify-content: center;
     border-radius: var(--radius-md);
     cursor: pointer;
-    color: var(--text-primary);
-    transition: background-color var(--dur-fast) var(--ease-standard), box-shadow var(--dur-fast) var(--ease-standard);
+    color: var(--text-secondary);
+    transition: background-color var(--dur-fast) var(--ease-standard), box-shadow var(--dur-fast) var(--ease-standard), color var(--dur-fast) var(--ease-standard);
     background: var(--bg-panel);
     border: 1px solid var(--border-subtle);
     pointer-events: auto;
@@ -273,6 +374,7 @@ body::before {
 
 .icon-btn:hover {
     background-color: var(--bg-button-hover);
+    color: var(--text-primary);
 }
 
 /* ── Sidebar Content (Legacy Overrides) ─────────────────────────────── */
@@ -579,7 +681,7 @@ body::before {
     background-position: right 8px center;
     background-size: 14px;
     backdrop-filter: blur(8px);
-    color: var(--text-primary);
+    color: var(--text-secondary);
     border: 1px solid var(--border-default);
     padding: 7px 28px 7px 10px;
     /* slightly taller */
@@ -603,6 +705,12 @@ body::before {
 .notion-select:focus-visible {
     border-color: rgba(255, 255, 255, 0.22);
     box-shadow: var(--focus-ring);
+}
+
+.notion-select option {
+    background-color: var(--bg-panel-solid);
+    color: var(--text-secondary);
+    padding: 8px;
 }
 
 /* ── Color Pickers ───────────────────────────────── */
@@ -718,6 +826,10 @@ input[type="color"]::-moz-color-swatch {
     color: var(--text-primary);
 }
 
+.tool-card:hover h3 {
+    color: var(--text-primary);
+}
+
 .notion-btn.active {
     background: var(--bg-button-active);
     color: var(--text-active);
@@ -753,7 +865,7 @@ input[type="color"]::-moz-color-swatch {
 
 .notion-btn-primary {
     background: var(--bg-button);
-    color: var(--text-primary);
+    color: var(--text-secondary);
     border: 1px solid var(--border-strong);
     font-weight: 600;
 }
@@ -873,9 +985,10 @@ input[type="color"]::-moz-color-swatch {
 }
 
 .tools-modal-header h2 {
-    font-size: 24px;
+    margin: 0;
+    font-size: 18px;
     font-weight: 600;
-    color: var(--text-primary);
+    color: var(--text-secondary);
     margin: 0;
     letter-spacing: -0.01em;
 }
@@ -917,13 +1030,13 @@ input[type="color"]::-moz-color-swatch {
 
 .tool-card .icon {
     font-size: 16px;
-    color: var(--text-primary);
+    color: var(--text-secondary);
 }
 
 .tool-card .label {
     font-size: 14px;
     font-weight: 500;
-    color: var(--text-primary);
+    color: var(--text-secondary);
 }
 
 /* ── Error Boundary & Recovery Card ──────────────────────────────── */
@@ -959,7 +1072,7 @@ input[type="color"]::-moz-color-swatch {
 .error-boundary-title {
     font-size: 18px;
     font-weight: 600;
-    color: var(--text-primary);
+    color: var(--text-secondary);
     letter-spacing: -0.01em;
 }
 
@@ -1028,12 +1141,15 @@ input[type="color"]::-moz-color-swatch {
 }
 
 @keyframes dmx-echo-ripple {
-    0%, 100% {
+
+    0%,
+    100% {
         opacity: 0.2;
         transform: scale(0.9);
         background: var(--border-strong);
         box-shadow: none;
     }
+
     40% {
         opacity: 1;
         transform: scale(1.3);

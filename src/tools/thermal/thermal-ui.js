@@ -17,13 +17,29 @@ export default {
         return `
             <section class="control-group">
                 <h2 class="group-title">Source</h2>
-                <div class="setting-row">
-                    <label>Upload Image</label>
+                <div class="segmented-switch" id="thermalSourceType" style="margin-bottom: 12px;">
+                    <input type="radio" id="thermalSrcFile" name="thermalSrc" value="file" checked>
+                    <label for="thermalSrcFile">File</label>
+                    <input type="radio" id="thermalSrcWebcam" name="thermalSrc" value="webcam">
+                    <label for="thermalSrcWebcam">Webcam</label>
+                </div>
+
+                <div class="setting-row" id="thermalDropZoneContainer">
                     <div id="thermalDropZone" class="tool-drop-zone">
                         <span class="material-symbols-outlined">upload_file</span>
-                        <p>Drag & drop image here<br>or click to browse</p>
-                        <input type="file" id="thermalMediaUpload" accept="image/*" class="tool-file-input">
+                        <p>Drag & drop image/video<br>or click to browse</p>
+                        <input type="file" id="thermalMediaUpload" accept="image/*,video/*" class="tool-file-input">
                     </div>
+                </div>
+
+                <div class="setting-row" id="thermalWebcamContainer" style="display: none;">
+                    <button class="notion-btn notion-btn-primary" id="thermalStartWebcamBtn" style="width: 100%;">
+                        <span class="material-symbols-outlined" style="font-size: 18px; margin-right: 6px;">videocam</span>
+                        Start Webcam
+                    </button>
+                    <p style="font-size: 12px; color: var(--text-secondary); text-align: center; margin-top: 8px;">
+                        Allows live thermal processing from your camera.
+                    </p>
                 </div>
             </section>
             <hr class="separator" />
@@ -116,6 +132,7 @@ export default {
         this._setupListeners();
     },
 
+    _addListenerEl(el, eventName, handler) { addListenerTracked(el, eventName, handler, this._listeners); },
     _addListener(id, eventName, handler) { addListenerTracked(document.getElementById(id), eventName, handler, this._listeners); },
     _setLevelControlsEnabled(enabled) {
         ['thermalBlackPoint', 'thermalWhitePoint'].forEach((id) => {
@@ -125,6 +142,26 @@ export default {
     },
 
     _setupListeners() {
+        const srcTypeRadios = document.querySelectorAll('input[name="thermalSrc"]');
+        srcTypeRadios.forEach(radio => {
+            this._addListenerEl(radio, 'change', (e) => {
+                const dropZoneContainer = document.getElementById('thermalDropZoneContainer');
+                const webcamContainer = document.getElementById('thermalWebcamContainer');
+                if (e.target.value === 'webcam') {
+                    if (dropZoneContainer) dropZoneContainer.style.display = 'none';
+                    if (webcamContainer) webcamContainer.style.display = 'block';
+                } else {
+                    if (dropZoneContainer) dropZoneContainer.style.display = 'block';
+                    if (webcamContainer) webcamContainer.style.display = 'none';
+                    if (this._visualizer) this._visualizer.stopWebcam();
+                }
+            });
+        });
+
+        this._addListener('thermalStartWebcamBtn', 'click', () => {
+            if (this._visualizer) this._visualizer.startWebcam();
+        });
+
         this._addListener('thermalPalette', 'change', (event) => {
             const paletteKey = event.target.value;
             this._visualizer.updateConfig({ paletteKey });

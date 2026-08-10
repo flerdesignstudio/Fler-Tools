@@ -17,6 +17,11 @@ export class ThermalVisualizer {
         this.offscreenCtx = this.offscreenCanvas.getContext('2d', { willReadFrequently: true });
         this.mediaElement = null;
         this._objectUrl = null;
+        this.isVideo = false;
+        this.isPlaying = true;
+        this.isLooping = true;
+        this.speed = 1.0;
+        this.animationFrameId = null;
         
         this._rafPending = false;
         this._rafId = null;
@@ -64,17 +69,187 @@ export class ThermalVisualizer {
         });
     }
 
+    beginExport() {
+        this._isExporting = true;
+        if (this.isVideo && this.mediaElement) {
+            this.mediaElement.pause();
+        }
+    }
+
+    endExport() {
+        this._isExporting = false;
+        if (this.isVideo && this.mediaElement) {
+            this.mediaElement.play();
+        }
+    }
+
+    async renderFrame(timeSec, targetCanvas = null) {
+        if (this.isVideo && this.mediaElement && !this._webcamStream && this.mediaElement.duration) {
+            this.mediaElement.currentTime = timeSec % this.mediaElement.duration;
+            await new Promise(resolve => {
+                const onSeeked = () => {
+                    this.mediaElement.removeEventListener('seeked', onSeeked);
+                    resolve();
+                };
+                this.mediaElement.addEventListener('seeked', onSeeked);
+                setTimeout(resolve, 50);
+            });
+        }
+        this._renderFrame();
+        if (targetCanvas && targetCanvas !== this.canvas) {
+            const ctx = targetCanvas.getContext('2d');
+            ctx.drawImage(this.canvas, 0, 0, targetCanvas.width, targetCanvas.height);
+        }
+    }
+
+    _stopMediaInternals() {
+        this.stopWebcam();
+        if (this.animationFrameId) {
+            cancelAnimationFrame(this.animationFrameId);
+            this.animationFrameId = null;
+        }
+        if (this._objectUrl) {
+            URL.revokeObjectURL(this._objectUrl);
+            this._objectUrl = null;
+        }
+        if (this.videoElement) {
+            this.videoElement.pause();
+            this.videoElement.src = '';
+            this.videoElement.srcObject = null;
+        }
+        this.mediaElement = null;
+    }
+
+    play() {
+        this.isPlaying = true;
+        if (this.isVideo && this.videoElement) {
+            this.videoElement.play();
+            if (!this.animationFrameId) this._loop();
+        } else if (!this.isVideo && this.mediaElement) {
+            this.triggerRender();
+        }
+    }
+
+    pause() {
+        this.isPlaying = false;
+        if (this.isVideo && this.videoElement) {
+            this.videoElement.pause();
+        }
+        if (this.animationFrameId) {
+            cancelAnimationFrame(this.animationFrameId);
+            this.animationFrameId = null;
+        }
+    }
+
+    restart() {
+        if (this.isVideo && this.videoElement && !this._webcamStream) {
+            this.videoElement.currentTime = 0;
+            if (this.isPlaying) this.videoElement.play();
+        } else if (!this.isVideo && this.mediaElement) {
+            this.triggerRender();
+        }
+    }
+
+    setLoop(loop) {
+        this.isLooping = loop;
+        if (this.videoElement) {
+            this.videoElement.loop = loop;
+        }
+    }
+
+    setSpeed(speed) {
+        this.speed = speed;
+        if (this.videoElement) {
+            this.videoElement.playbackRate = speed;
+        }
+    }
+
     loadMedia(file) {
         if (!file) return;
-        if (this._objectUrl) URL.revokeObjectURL(this._objectUrl);
-        this._objectUrl = URL.createObjectURL(file);
 
-        const image = new Image();
-        image.onload = () => {
-            this.mediaElement = image;
-            this.triggerRender();
-        };
-        image.src = this._objectUrl;
+        this._stopMediaInternals();
+        const url = URL.createObjectURL(file);
+        this._objectUrl = url;
+
+        const isVideo = (file.type && file.type.startsWith('video/')) || /\.(mp4|webm|mov|avi|mkv|m4v|ogv)$/i.test(file.name || '');
+
+        if (isVideo) {
+            this.isVideo = true;
+            if (this.animationFrameId) cancelAnimationFrame(this.animationFrameId);
+
+            const video = document.createElement('video');
+            video.loop = this.isLooping;
+            video.playbackRate = this.speed;
+            video.muted = true;
+            video.playsInline = true;
+            video.onloadeddata = () => {
+                if (this.isPlaying) video.play().catch(() => {});
+                if (this.isPlaying && !this.animationFrameId) this._loop();
+            };
+            video.oncanplay = () => {
+                if (this.isPlaying && !this.animationFrameId) this._loop();
+            };
+            video.src = url;
+            this.videoElement = video;
+            this.mediaElement = video;
+            if (this.isPlaying) video.play().catch(() => {});
+            video.load();
+        } else {
+            this.isVideo = false;
+            if (this.videoElement) this.videoElement.pause();
+            const image = new Image();
+            image.onload = () => {
+                this.mediaElement = image;
+                this.triggerRender();
+            };
+            image.src = url;
+        }
+    }
+
+    async startWebcam() {
+        this._stopMediaInternals();
+        try {
+            this._webcamStream = await navigator.mediaDevices.getUserMedia({ video: true });
+            this.isVideo = true;
+            if (this.animationFrameId) cancelAnimationFrame(this.animationFrameId);
+
+            const video = document.createElement('video');
+            video.srcObject = this._webcamStream;
+            video.autoplay = true;
+            video.loop = this.isLooping;
+            video.playbackRate = this.speed;
+            video.muted = true;
+            video.playsInline = true;
+            video.onloadeddata = () => {
+                if (this.isPlaying) video.play().catch(() => {});
+                if (this.isPlaying && !this.animationFrameId) this._loop();
+            };
+            this.videoElement = video;
+            this.mediaElement = video;
+            if (this.isPlaying) video.play().catch(() => {});
+        } catch (err) {
+            console.error('Error accessing webcam in ThermalVisualizer', err);
+            alert('Could not access webcam. Please check permissions.');
+        }
+    }
+
+    stopWebcam() {
+        if (this._webcamStream) {
+            this._webcamStream.getTracks().forEach(track => track.stop());
+            this._webcamStream = null;
+        }
+        if (this.videoElement && this.videoElement.srcObject) {
+            this.videoElement.srcObject = null;
+        }
+    }
+
+    _loop() {
+        if (!this.isPlaying || !this.isVideo || !this.mediaElement) {
+            this.animationFrameId = null;
+            return;
+        }
+        this._renderFrame();
+        this.animationFrameId = requestAnimationFrame(() => this._loop());
     }
 
     _hexToRgb(hex) {
@@ -148,8 +323,8 @@ export class ThermalVisualizer {
 
     _renderFrame() {
         if (!this.mediaElement) return;
-        const sourceWidth = this.mediaElement.naturalWidth;
-        const sourceHeight = this.mediaElement.naturalHeight;
+        const sourceWidth = this.mediaElement.videoWidth || this.mediaElement.naturalWidth || this.mediaElement.width;
+        const sourceHeight = this.mediaElement.videoHeight || this.mediaElement.naturalHeight || this.mediaElement.height;
         if (!sourceWidth || !sourceHeight) return;
 
         const width = Number(this.config.resolution);
@@ -160,7 +335,15 @@ export class ThermalVisualizer {
         this.offscreenCanvas.height = height;
         this.offscreenCtx.clearRect(0, 0, width, height);
         this.offscreenCtx.filter = Number(this.config.blur) > 0 ? `blur(${this.config.blur}px)` : 'none';
-        this.offscreenCtx.drawImage(this.mediaElement, 0, 0, width, height);
+        if (this._webcamStream) {
+            this.offscreenCtx.save();
+            this.offscreenCtx.translate(width, 0);
+            this.offscreenCtx.scale(-1, 1);
+            this.offscreenCtx.drawImage(this.mediaElement, 0, 0, width, height);
+            this.offscreenCtx.restore();
+        } else {
+            this.offscreenCtx.drawImage(this.mediaElement, 0, 0, width, height);
+        }
         this.offscreenCtx.filter = 'none';
 
         const imageData = this.offscreenCtx.getImageData(0, 0, width, height);
@@ -223,8 +406,6 @@ export class ThermalVisualizer {
     }
 
     destroy() {
-        if (this._rafId) cancelAnimationFrame(this._rafId);
-        if (this._objectUrl) URL.revokeObjectURL(this._objectUrl);
-        this.mediaElement = null;
+        this._stopMediaInternals();
     }
 }

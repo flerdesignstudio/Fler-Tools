@@ -20,13 +20,29 @@ export default {
         return `
             <section class="control-group">
                 <h2 class="group-title">Source</h2>
-                <div class="setting-row">
-                    <label>Upload Image</label>
+                <div class="segmented-switch" id="ditherSourceType" style="margin-bottom: 12px;">
+                    <input type="radio" id="srcFile" name="ditherSrc" value="file" checked>
+                    <label for="srcFile">File</label>
+                    <input type="radio" id="srcWebcam" name="ditherSrc" value="webcam">
+                    <label for="srcWebcam">Webcam</label>
+                </div>
+                
+                <div class="setting-row" id="ditherDropZoneContainer">
                     <div id="ditherDropZone" class="tool-drop-zone">
                         <span class="material-symbols-outlined">upload_file</span>
-                        <p>Drag & drop image here<br>or click to browse</p>
-                        <input type="file" id="ditherMediaUpload" accept="image/*" class="tool-file-input">
+                        <p>Drag & drop image/video<br>or click to browse</p>
+                        <input type="file" id="ditherMediaUpload" accept="image/*,video/*" class="tool-file-input">
                     </div>
+                </div>
+
+                <div class="setting-row" id="ditherWebcamContainer" style="display: none;">
+                    <button class="notion-btn notion-btn-primary" id="ditherStartWebcamBtn" style="width: 100%;">
+                        <span class="material-symbols-outlined" style="font-size: 18px; margin-right: 6px;">videocam</span>
+                        Start Webcam
+                    </button>
+                    <p style="font-size: 12px; color: var(--text-secondary); text-align: center; margin-top: 8px;">
+                        Allows live dither processing from your camera.
+                    </p>
                 </div>
             </section>
             <hr class="separator" />
@@ -264,6 +280,31 @@ export default {
     },
 
     _setupListeners() {
+        const ditherSrcRadios = document.querySelectorAll('input[name="ditherSrc"]');
+        const dropZone = document.getElementById('ditherDropZoneContainer');
+        const webcamZone = document.getElementById('ditherWebcamContainer');
+        
+        if (ditherSrcRadios.length > 0) {
+            ditherSrcRadios.forEach(radio => {
+                addListenerTracked(radio, 'change', (e) => {
+                    if (e.target.value === 'file') {
+                        dropZone.style.display = 'block';
+                        webcamZone.style.display = 'none';
+                        if (this._visualizer) this._visualizer.stopWebcam();
+                    } else {
+                        dropZone.style.display = 'none';
+                        webcamZone.style.display = 'block';
+                    }
+                }, this._listeners);
+            });
+        }
+
+        this._addListener('ditherStartWebcamBtn', 'click', () => {
+            if (this._visualizer) {
+                this._visualizer.startWebcam();
+            }
+        });
+
         this._addListener('ditherAlgorithm', 'change', (e) => {
             this._visualizer.updateConfig({ algorithm: e.target.value });
         });

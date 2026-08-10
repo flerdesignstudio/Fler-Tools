@@ -9,6 +9,7 @@ import cellsIcon from './Assets/cells.svg?raw';
 import thermalIcon from './Assets/thermal.svg?raw';
 import matrixIcon from './Assets/matrix.svg?raw';
 import { renderToolErrorUI, setupGlobalExceptionCatchers } from './utils/error-handler.js';
+import { mediaEngine } from './utils/media-engine.js';
 
 // Inizializza Vercel Speed Insights e Web Analytics
 injectSpeedInsights();
@@ -123,6 +124,7 @@ export const loadTool = async (toolId) => {
         if (currentTool.destroy) {
             currentTool.destroy();
         }
+        mediaEngine.detachVisualizer();
     }
 
     // Update active state in nav by re-rendering
@@ -170,6 +172,9 @@ export const loadTool = async (toolId) => {
 
         if (toolInstance.init) {
             toolInstance.init(sidebarContainer, mainContainer);
+            if (toolInstance._visualizer) {
+                mediaEngine.attachVisualizer(toolInstance._visualizer);
+            }
         }
     } catch (error) {
         console.error(`[Fler Tools - Recovery] Failed to load or initialize tool "${toolMeta.label || toolId}":`, error);
@@ -334,7 +339,14 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('exportSvgBtn').addEventListener('click', async () => {
         if (currentTool && currentTool._visualizer && currentTool._visualizer.exportToSVG) {
             const svgString = await currentTool._visualizer.exportToSVG();
-            if (!svgString) return;
+            if (svgString === null) {
+                // Export was canceled by user or handled internally by the visualizer
+                return;
+            }
+            if (!svgString) {
+                alert('No media content available to export as SVG. Please load an image or video first.');
+                return;
+            }
 
             const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
             const url = URL.createObjectURL(blob);

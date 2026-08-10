@@ -33,10 +33,6 @@ export default {
                     <span>Variant (Addition Formula)</span>
                 </label>
                 <div style="display: flex; gap: 8px;">
-                    <button id="togglePlayBtn" class="notion-btn notion-btn-secondary" style="flex: 1;">
-                        <span class="material-symbols-outlined" style="font-size: 18px;">pause</span>
-                        <span id="playBtnText">Pause</span>
-                    </button>
                     <button id="randomizeBtn" class="notion-btn notion-btn-secondary" style="flex: 1;">
                         <span class="material-symbols-outlined" style="font-size: 18px;">shuffle</span>
                         Random
@@ -276,23 +272,9 @@ export default {
             document.getElementById('mVal').textContent = mSlider.value;
             variantToggle.checked = Math.random() > 0.5;
             updatePatternFromUI();
-            v.initParticles();
-            
-            if (!v.isPlaying) {
-                v.isPlaying = true;
-                document.getElementById('playBtnText').textContent = 'Pause';
-                const iconSpan = document.getElementById('togglePlayBtn').querySelector('.material-symbols-outlined');
-                if (iconSpan) iconSpan.textContent = 'pause';
-                v.animate();
-            }
         });
 
-        this._addListener('togglePlayBtn', 'click', () => {
-            v.togglePlay();
-            document.getElementById('playBtnText').textContent = v.isPlaying ? 'Pause' : 'Play';
-            const iconSpan = document.getElementById('togglePlayBtn').querySelector('.material-symbols-outlined');
-            if (iconSpan) iconSpan.textContent = v.isPlaying ? 'pause' : 'play_arrow';
-        });
+
 
         this._addListener('aspectRatioSelect', 'change', (e) => {
             v.setAspectRatio(e.target.value);

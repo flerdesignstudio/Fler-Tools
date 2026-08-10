@@ -42,7 +42,7 @@
     <noscript>
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
     </noscript>
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0"
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,1,0"
         rel="stylesheet" />
 </head>
 
@@ -90,8 +90,47 @@
 
         <!-- Bottom Right: Export Frame -->
         <div class="export-frame panel">
-            <button class="notion-btn notion-btn-secondary" id="exportPngBtn">Export PNG</button>
-            <button class="notion-btn notion-btn-secondary" id="exportSvgBtn">Export SVG</button>
+            <button class="notion-btn notion-btn-secondary" id="exportPngBtn">Export IMG</button>
+            <button class="notion-btn notion-btn-secondary" id="exportSvgBtn">Export VEC</button>
+            <button class="notion-btn notion-btn-secondary" id="exportWebmBtn" disabled
+                title="Record a video first to export">Export VID</button>
+        </div>
+
+        <!-- Bottom Center: Recording Frame -->
+        <div class="recording-bar-wrapper">
+            <div class="nav-bar-spacer-left"></div>
+            <div class="recording-frame panel" id="recording-frame">
+                <button class="icon-btn" id="playPauseBtn" title="Play/Pause"><span
+                        class="material-symbols-outlined">pause</span></button>
+                <button class="icon-btn" id="replayBtn" title="Restart"><span
+                        class="material-symbols-outlined">replay</span></button>
+                <button class="icon-btn" id="loopBtn" title="Toggle Loop"><span
+                        class="material-symbols-outlined">laps</span></button>
+
+                <div class="recording-divider"></div>
+
+                <button class="icon-btn record-btn" id="recordBtn" title="Start Recording"><span
+                        class="material-symbols-outlined" style="color: #ff3b30">lens</span></button>
+                <span class="timer-text" style="font-variant-numeric: tabular-nums;">--:--</span>
+                <button class="icon-btn" id="clearRecordBtn" style="opacity: 0.25;" title="Reset Record"><span
+                        class="material-symbols-outlined">settings_backup_restore</span></button>
+
+                <div class="recording-divider"></div>
+
+                <span class="stat-label">FPS</span>
+                <button class="icon-btn text-btn" id="fpsBtn">12</button>
+
+                <div class="recording-divider"></div>
+
+                <span class="material-symbols-outlined stat-icon">avg_pace</span>
+                <button class="icon-btn text-btn" id="speedBtn">1x</button>
+
+                <div class="recording-divider"></div>
+
+                <span class="material-symbols-outlined stat-icon">capture</span>
+                <button class="icon-btn text-btn" id="viewportBtn">Low</button>
+            </div>
+            <div class="nav-bar-spacer-right"></div>
         </div>
 
         <!-- Top Right: Actions -->
@@ -108,7 +147,8 @@
 
     <!-- Tools Modal Overlay -->
     <div id="tools-modal-overlay" class="tools-modal-overlay">
-        <div id="tools-modal-content" class="tools-modal-content panel" role="dialog" aria-modal="true" aria-labelledby="tools-modal-title">
+        <div id="tools-modal-content" class="tools-modal-content panel" role="dialog" aria-modal="true"
+            aria-labelledby="tools-modal-title">
             <div class="tools-modal-header">
                 <h2 id="tools-modal-title">All Tools</h2>
                 <button class="notion-btn notion-btn-secondary close-modal-btn" id="closeToolsModalBtn">
@@ -123,7 +163,8 @@
 
     <!-- Info Modal Overlay -->
     <div id="info-modal-overlay" class="tools-modal-overlay">
-        <div id="info-modal-content" class="tools-modal-content panel" style="max-width: 500px; padding: 24px;" role="dialog" aria-modal="true" aria-labelledby="info-modal-title">
+        <div id="info-modal-content" class="tools-modal-content panel" style="max-width: 500px; padding: 24px;"
+            role="dialog" aria-modal="true" aria-labelledby="info-modal-title">
             <div class="tools-modal-header" style="margin-bottom: 16px;">
                 <h2 id="info-modal-title">About Fler Tools</h2>
                 <button class="notion-btn notion-btn-secondary close-modal-btn" id="closeInfoModalBtn">
@@ -150,6 +191,59 @@
                         style="text-decoration: none; color: inherit;">
                         <span class="material-symbols-outlined" style="font-size: 18px;">mail</span> Contact Us
                     </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Video Modal -->
+    <div class="tools-modal-overlay" id="exportVidModal">
+        <div class="tools-modal-content panel" style="width: 400px; padding: 24px; max-width: 90vw;" role="dialog"
+            aria-modal="true" aria-labelledby="exportVidModalTitle">
+            <div class="tools-modal-header" style="margin-bottom: 16px;">
+                <h2 id="exportVidModalTitle"
+                    style="font-size: 16px; font-weight: 600; margin: 0; color: var(--text-secondary);">Export video
+                    settings</h2>
+                <button class="notion-btn notion-btn-secondary close-modal-btn" id="closeExportVidModalBtn"
+                    aria-label="Close modal">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <div class="info-modal-body" style="display: flex; flex-direction: column; gap: 16px;">
+
+                <div class="setting-row">
+                    <label class="control-label" for="exportVidQuality"
+                        style="font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em;">Export
+                        Quality</label>
+                    <select class="notion-select" id="exportVidQuality" style="width: 100%;">
+                        <option value="Original">Original (Include Interactions)</option>
+                        <option value="2K">2K (Static Re-render / Upscale)</option>
+                        <option value="4K">4K (Static Re-render / Upscale)</option>
+                    </select>
+                    <p id="exportVidResolutionInfo"
+                        style="font-size: 12px; color: var(--text-muted); margin-top: 2px; font-variant-numeric: tabular-nums;">
+                    </p>
+                </div>
+
+                <div id="exportVidProgressContainer" style="display: none; flex-direction: column; gap: 8px;">
+                    <div
+                        style="display: flex; justify-content: space-between; font-size: 12px; color: var(--text-secondary);">
+                        <span id="exportVidProgressText">Preparing rendering...</span>
+                        <span id="exportVidProgressPercent" style="font-variant-numeric: tabular-nums;">0%</span>
+                    </div>
+                    <div class="progress-bar-bg"
+                        style="width: 100%; height: 6px; background: var(--glass-low); border-radius: 3px; overflow: hidden; border: 1px solid var(--border-subtle);">
+                        <div class="progress-bar-fill" id="exportVidProgressBar"
+                            style="width: 0%; height: 100%; background: var(--text-primary); transition: width 0.2s ease;">
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 8px;">
+                    <button class="notion-btn notion-btn-tertiary" id="cancelExportVidBtn">Cancel</button>
+                    <button class="notion-btn notion-btn-primary" id="confirmExportVidBtn">
+                        <span class="material-symbols-outlined" style="font-size: 16px;">download</span> Download
+                    </button>
                 </div>
             </div>
         </div>

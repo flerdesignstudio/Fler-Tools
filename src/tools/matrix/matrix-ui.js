@@ -20,13 +20,29 @@ export default {
         return `
             <section class="control-group">
                 <h2 class="group-title">Source</h2>
-                <div class="setting-row">
-                    <label>Upload Photo</label>
+                <div class="segmented-switch" id="matrixSourceType" style="margin-bottom: 12px;">
+                    <input type="radio" id="matrixSrcFile" name="matrixSrc" value="file" checked>
+                    <label for="matrixSrcFile">File</label>
+                    <input type="radio" id="matrixSrcWebcam" name="matrixSrc" value="webcam">
+                    <label for="matrixSrcWebcam">Webcam</label>
+                </div>
+
+                <div class="setting-row" id="matrixDropZoneContainer">
                     <div id="matrixDropZone" class="tool-drop-zone">
                         <span class="material-symbols-outlined">upload_file</span>
-                        <p>Drag & drop image here<br>or click to browse</p>
-                        <input type="file" id="matrixMediaUpload" accept="image/*" class="tool-file-input">
+                        <p>Drag & drop image/video<br>or click to browse</p>
+                        <input type="file" id="matrixMediaUpload" accept="image/*,video/*" class="tool-file-input">
                     </div>
+                </div>
+
+                <div class="setting-row" id="matrixWebcamContainer" style="display: none;">
+                    <button class="notion-btn notion-btn-primary" id="matrixStartWebcamBtn" style="width: 100%;">
+                        <span class="material-symbols-outlined" style="font-size: 18px; margin-right: 6px;">videocam</span>
+                        Start Webcam
+                    </button>
+                    <p style="font-size: 12px; color: var(--text-secondary); text-align: center; margin-top: 8px;">
+                        Allows live matrix processing from your camera.
+                    </p>
                 </div>
             </section>
             <hr class="separator" />
@@ -285,6 +301,26 @@ export default {
             fileInputId: 'matrixMediaUpload',
             onFile: (file) => v.loadMedia(file, () => { if (this._resetView) this._resetView(); }),
             listeners: this._listeners,
+        });
+
+        const srcTypeRadios = document.querySelectorAll('input[name="matrixSrc"]');
+        srcTypeRadios.forEach(radio => {
+            this._addListenerEl(radio, 'change', (e) => {
+                const dropZoneContainer = document.getElementById('matrixDropZoneContainer');
+                const webcamContainer = document.getElementById('matrixWebcamContainer');
+                if (e.target.value === 'webcam') {
+                    if (dropZoneContainer) dropZoneContainer.style.display = 'none';
+                    if (webcamContainer) webcamContainer.style.display = 'block';
+                } else {
+                    if (dropZoneContainer) dropZoneContainer.style.display = 'block';
+                    if (webcamContainer) webcamContainer.style.display = 'none';
+                    if (v) v.stopMedia();
+                }
+            });
+        });
+
+        this._addListener('matrixStartWebcamBtn', 'click', () => {
+            if (v) v.startWebcam(() => { if (this._resetView) this._resetView(); });
         });
 
         this._addListener('matrixBgColor', 'input', (e) => v.updateConfig({ bgColor: e.target.value }));

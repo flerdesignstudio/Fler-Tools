@@ -169,6 +169,11 @@ export class MatrixVisualizer {
 
         this.isExportUpscalingOverride = false;
 
+        this.isPlaying = true;
+        this.isLooping = true;
+        this.speed = 1.0;
+        this.animationFrameId = null;
+
         this.matrixSize = 7;
         this.loadedPaths = [];
 
@@ -279,11 +284,24 @@ export class MatrixVisualizer {
         if (this.mediaType === 'image') this._processFrame();
     }
 
-    // --- Media pipeline ---------------------------------------------------
-    // Image-only for now. Video/webcam intentionally removed pending a
-    // dedicated video UX/pipeline redesign — don't re-add ad hoc here.
-
     _stopMediaInternals() {
+        if (this.animationFrameId) {
+            cancelAnimationFrame(this.animationFrameId);
+            this.animationFrameId = null;
+        }
+        if (this._webcamStream) {
+            this._webcamStream.getTracks().forEach(track => track.stop());
+            this._webcamStream = null;
+        }
+        if (this._objectUrl) {
+            URL.revokeObjectURL(this._objectUrl);
+            this._objectUrl = null;
+        }
+        if (this.videoElement) {
+            this.videoElement.pause();
+            this.videoElement.src = '';
+            this.videoElement.srcObject = null;
+        }
         this.activeImage = null;
     }
 
@@ -292,22 +310,160 @@ export class MatrixVisualizer {
         this.mediaType = null;
     }
 
+    play() {
+        this.isPlaying = true;
+        if (this.mediaType === 'video' && this.videoElement) {
+            this.videoElement.play().catch(() => {});
+            if (!this.animationFrameId) this._loop();
+        } else if (this.mediaType === 'image') {
+            this.triggerRender();
+        }
+    }
+
+    pause() {
+        this.isPlaying = false;
+        if (this.mediaType === 'video' && this.videoElement) {
+            this.videoElement.pause();
+        }
+        if (this.animationFrameId) {
+            cancelAnimationFrame(this.animationFrameId);
+            this.animationFrameId = null;
+        }
+    }
+
+    restart() {
+        if (this.mediaType === 'video' && this.videoElement && !this._webcamStream) {
+            this.videoElement.currentTime = 0;
+            if (this.isPlaying) this.videoElement.play().catch(() => {});
+        } else if (this.mediaType === 'image') {
+            this.triggerRender();
+        }
+    }
+
+    setLoop(loop) {
+        this.isLooping = loop;
+        if (this.videoElement) {
+            this.videoElement.loop = loop;
+        }
+    }
+
+    setSpeed(speed) {
+        this.speed = speed;
+        if (this.videoElement) {
+            this.videoElement.playbackRate = speed;
+        }
+    }
+
     loadMedia(file, onReady) {
-        if (!file || !file.type.startsWith('image/')) return;
+        if (!file) return;
 
         this._stopMediaInternals();
-        if (this._objectUrl) URL.revokeObjectURL(this._objectUrl);
         const url = URL.createObjectURL(file);
         this._objectUrl = url;
 
-        this.mediaType = 'image';
-        const img = new Image();
-        img.onload = () => {
-            this.activeImage = img;
-            this.triggerRender();
-            if (onReady) onReady();
-        };
-        img.src = url;
+        const isVideo = (file.type && file.type.startsWith('video/')) || /\.(mp4|webm|mov|avi|mkv|m4v|ogv)$/i.test(file.name || '');
+
+        if (isVideo) {
+            this.mediaType = 'video';
+            if (this.animationFrameId) cancelAnimationFrame(this.animationFrameId);
+
+            const video = document.createElement('video');
+            video.loop = this.isLooping;
+            video.playbackRate = this.speed;
+            video.muted = true;
+            video.playsInline = true;
+            video.onloadeddata = () => {
+                if (this.isPlaying) video.play().catch(() => {});
+                if (this.isPlaying && !this.animationFrameId) this._loop();
+                if (onReady) onReady();
+            };
+            video.oncanplay = () => {
+                if (this.isPlaying && !this.animationFrameId) this._loop();
+            };
+            video.src = url;
+            this.videoElement = video;
+            if (this.isPlaying) video.play().catch(() => {});
+            video.load();
+        } else {
+            this.mediaType = 'image';
+            if (this.videoElement) this.videoElement.pause();
+            const img = new Image();
+            img.onload = () => {
+                this.activeImage = img;
+                this.triggerRender();
+                if (onReady) onReady();
+            };
+            img.src = url;
+        }
+    }
+
+    async startWebcam(onReady) {
+        this._stopMediaInternals();
+        try {
+            this._webcamStream = await navigator.mediaDevices.getUserMedia({ video: true });
+            this.mediaType = 'video';
+            if (this.animationFrameId) cancelAnimationFrame(this.animationFrameId);
+
+            const video = document.createElement('video');
+            video.srcObject = this._webcamStream;
+            video.autoplay = true;
+            video.loop = this.isLooping;
+            video.playbackRate = this.speed;
+            video.muted = true;
+            video.playsInline = true;
+            video.onloadeddata = () => {
+                if (this.isPlaying) video.play().catch(() => {});
+                if (this.isPlaying && !this.animationFrameId) this._loop();
+                if (onReady) onReady();
+            };
+            this.videoElement = video;
+            if (this.isPlaying) video.play().catch(() => {});
+        } catch (err) {
+            console.error('Error accessing webcam in MatrixVisualizer', err);
+            alert('Could not access webcam. Please check permissions.');
+        }
+    }
+
+    _loop() {
+        if (!this.isPlaying || this.mediaType !== 'video' || !this.videoElement) {
+            this.animationFrameId = null;
+            return;
+        }
+        this._processFrame();
+        this.animationFrameId = requestAnimationFrame(() => this._loop());
+    }
+
+    beginExport() {
+        this._isExporting = true;
+        if (this.mediaType === 'video' && this.videoElement) {
+            this.videoElement.pause();
+        }
+    }
+
+    endExport() {
+        this._isExporting = false;
+        if (this.mediaType === 'video' && this.videoElement) {
+            this.videoElement.play();
+        }
+    }
+
+    async renderFrame(timeSec, targetCanvas = null) {
+        if (this.mediaType === 'video' && this.videoElement && !this._webcamStream && this.videoElement.duration) {
+            this.videoElement.currentTime = timeSec % this.videoElement.duration;
+            await new Promise(resolve => {
+                const onSeeked = () => {
+                    this.videoElement.removeEventListener('seeked', onSeeked);
+                    resolve();
+                };
+                this.videoElement.addEventListener('seeked', onSeeked);
+                setTimeout(resolve, 50);
+            });
+        }
+        this._processFrame();
+        if (targetCanvas && targetCanvas !== this.canvas) {
+            const ctx = targetCanvas.getContext('2d');
+            ctx.drawImage(this.canvas, 0, 0, targetCanvas.width, targetCanvas.height);
+        }
     }
 
     // --- Core render algorithm ---------------------------------------------
@@ -315,8 +471,15 @@ export class MatrixVisualizer {
     _processFrame() {
         if (!this.mediaType) return;
 
-        if (this.mediaType !== 'image' || !this.activeImage) return;
-        const sw = this.activeImage.width, sh = this.activeImage.height;
+        let sw = 0, sh = 0;
+        if (this.mediaType === 'image' && this.activeImage) {
+            sw = this.activeImage.width;
+            sh = this.activeImage.height;
+        } else if (this.mediaType === 'video' && this.videoElement) {
+            sw = this.videoElement.videoWidth;
+            sh = this.videoElement.videoHeight;
+        }
+
         if (sw === 0 || sh === 0) return;
 
         if (this._sourceCanvas.width !== sw || this._sourceCanvas.height !== sh) {
@@ -324,7 +487,19 @@ export class MatrixVisualizer {
             this._sourceCanvas.height = sh;
         }
 
-        this._sourceCtx.drawImage(this.activeImage, 0, 0);
+        if (this.mediaType === 'image') {
+            this._sourceCtx.drawImage(this.activeImage, 0, 0);
+        } else if (this.mediaType === 'video') {
+            if (this._webcamStream) {
+                this._sourceCtx.save();
+                this._sourceCtx.translate(sw, 0);
+                this._sourceCtx.scale(-1, 1);
+                this._sourceCtx.drawImage(this.videoElement, 0, 0);
+                this._sourceCtx.restore();
+            } else {
+                this._sourceCtx.drawImage(this.videoElement, 0, 0);
+            }
+        }
 
         const { aspectRatio } = this.config;
         let tw = sw, th = sh;
@@ -455,9 +630,19 @@ export class MatrixVisualizer {
     // _showWarningModal removed, now using shared utility
 
     async exportToSVG() {
-        if (!this.mediaType || !this.activeImage) return null;
+        if (!this.mediaType) return false;
 
-        const sw = this.activeImage.width, sh = this.activeImage.height;
+        let sw = 0, sh = 0;
+        if (this.mediaType === 'image' && this.activeImage) {
+            sw = this.activeImage.width;
+            sh = this.activeImage.height;
+        } else if (this.mediaType === 'video' && this.videoElement) {
+            sw = this.videoElement.videoWidth;
+            sh = this.videoElement.videoHeight;
+        }
+
+        if (sw === 0 || sh === 0) return false;
+
         const aspectRatio = this.config.aspectRatio;
 
         let tw = sw, th = sh;
@@ -472,6 +657,25 @@ export class MatrixVisualizer {
         if (estimatedShapes > 8000) {
             const proceed = await showLargeExportWarning(estimatedShapes, 'shapes');
             if (!proceed) return null;
+        }
+
+        // Draw current source (image or video frame) into source canvas
+        if (this._sourceCanvas.width !== sw || this._sourceCanvas.height !== sh) {
+            this._sourceCanvas.width = sw;
+            this._sourceCanvas.height = sh;
+        }
+        if (this.mediaType === 'image' && this.activeImage) {
+            this._sourceCtx.drawImage(this.activeImage, 0, 0);
+        } else if (this.mediaType === 'video' && this.videoElement) {
+            if (this._webcamStream) {
+                this._sourceCtx.save();
+                this._sourceCtx.translate(sw, 0);
+                this._sourceCtx.scale(-1, 1);
+                this._sourceCtx.drawImage(this.videoElement, 0, 0);
+                this._sourceCtx.restore();
+            } else {
+                this._sourceCtx.drawImage(this.videoElement, 0, 0);
+            }
         }
 
         let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${tw} ${th}" width="${tw}" height="${th}">\n`;

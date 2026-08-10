@@ -58,15 +58,15 @@ export default {
                 <div class="color-grid">
                     <div class="color-item">
                         <label for="posColor_h">Positive Phase (+)</label>
-                        <div class="color-wrapper"><input type="color" id="posColor_h" value="#000000"></div>
+                        <div class="color-wrapper"><input type="color" id="posColor_h" value="#39FF14"></div>
                     </div>
                     <div class="color-item">
                         <label for="negColor_h">Negative Phase (-)</label>
-                        <div class="color-wrapper"><input type="color" id="negColor_h" value="#FF0000"></div>
+                        <div class="color-wrapper"><input type="color" id="negColor_h" value="#8800FF"></div>
                     </div>
                     <div class="color-item">
                         <label for="colorBg_h">Background</label>
-                        <div class="color-wrapper"><input type="color" id="colorBg_h" value="#FFFFFF"></div>
+                        <div class="color-wrapper"><input type="color" id="colorBg_h" value="#000000"></div>
                     </div>
                 </div>
 

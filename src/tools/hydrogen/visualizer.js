@@ -49,12 +49,23 @@ function legendre(l, m, x) {
 }
 
 const hexToRgb = (hex) => {
-    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    return result ? [
-        parseInt(result[1], 16),
-        parseInt(result[2], 16),
-        parseInt(result[3], 16)
-    ] : [0, 0, 0];
+    if (!hex) return [0, 0, 0];
+    const cleanHex = String(hex).replace('#', '');
+    if (cleanHex.length === 3) {
+        return [
+            parseInt(cleanHex[0] + cleanHex[0], 16),
+            parseInt(cleanHex[1] + cleanHex[1], 16),
+            parseInt(cleanHex[2] + cleanHex[2], 16)
+        ];
+    }
+    if (cleanHex.length >= 6) {
+        return [
+            parseInt(cleanHex.slice(0, 2), 16),
+            parseInt(cleanHex.slice(2, 4), 16),
+            parseInt(cleanHex.slice(4, 6), 16)
+        ];
+    }
+    return [0, 0, 0];
 };
 
 function interpolateHexColors(c1, c2, t) {
@@ -106,16 +117,14 @@ export class HydrogenVisualizer {
             particleSize: 0.7,
             particleAlpha: 0.65,
 
-            // 'reject' = campionamento diretto per rigetto, senza random walk.
-            // Corretto per gusci/nodi netti come in questa immagine.
             samplingMode: 'reject',
             maxRejectAttempts: 60,
-            respawnFraction: 1.0, // frazione di particelle ricampionate ogni frame
+            respawnFraction: 1.0,
 
             accumulate: true,
 
             posColor: '#39FF14',
-            negColor: '#8800ffff',
+            negColor: '#8800FF',
 
             rotateColors: false,
             rotationSpeed: 0.5,
@@ -126,13 +135,44 @@ export class HydrogenVisualizer {
 
         this.aspectRatio = '1:1';
         this.animationFrameId = null;
+        this.isPlaying = true;
+        this.speed = 1.0;
+        this.qualityMultiplier = 1.0;
 
         this.resize();
-
+        
         // Initial estimate of max density
         this.maxPsiSq = this._computeMaxPsiSq(this.params.n, this.params.l, this.params.m);
         this.initParticles();
         this.animate();
+    }
+
+    play() {
+        if (!this.isPlaying) {
+            this.isPlaying = true;
+            this.animate();
+        }
+    }
+
+    pause() {
+        this.isPlaying = false;
+        if (this.animationFrameId) {
+            cancelAnimationFrame(this.animationFrameId);
+            this.animationFrameId = null;
+        }
+    }
+
+    restart() {
+        this.resetAccumulation();
+        this.initParticles();
+    }
+
+    setLoop(loop) {
+        this.isLooping = loop;
+    }
+
+    setSpeed(speed) {
+        this.speed = speed;
     }
 
     resetAccumulation() {
@@ -145,6 +185,13 @@ export class HydrogenVisualizer {
         this.aspectRatio = ratioStr;
         this.resize();
         this.isMorphing = false;
+    }
+
+    setQuality(qualityStr) {
+        if (qualityStr === 'Low') this.qualityMultiplier = 0.25;
+        else if (qualityStr === 'Med') this.qualityMultiplier = 0.5;
+        else this.qualityMultiplier = 1.0;
+        this.resize();
     }
 
     updatePattern(n, l, m) {
@@ -165,6 +212,7 @@ export class HydrogenVisualizer {
 
     updateConfig(newConfig) {
         this.config = { ...this.config, ...newConfig };
+        this.resetAccumulation();
     }
 
     resize() {
@@ -175,11 +223,11 @@ export class HydrogenVisualizer {
             '4:3': { w: 1200, h: 900 }
         };
 
-        const dims = ratios[this.aspectRatio] || ratios['1:1'];
+        const baseDims = ratios[this.aspectRatio] || ratios['1:1'];
 
-        this.canvas.width = dims.w;
-        this.canvas.height = dims.h;
-        this.canvas.style.aspectRatio = `${dims.w} / ${dims.h}`;
+        this.canvas.width = Math.round(baseDims.w * this.qualityMultiplier);
+        this.canvas.height = Math.round(baseDims.h * this.qualityMultiplier);
+        this.canvas.style.aspectRatio = `${baseDims.w} / ${baseDims.h}`;
         this.canvas.style.width = '100%';
         this.canvas.style.height = '100%';
         this.canvas.style.objectFit = 'contain';
@@ -196,10 +244,8 @@ export class HydrogenVisualizer {
         const h = this.canvas.height;
 
         for (let i = 0; i < this.numParticles; i++) {
-            // Start at center
-            let p = { x: w / 2, y: h / 2, psi: 0 };
-            // Give it plenty of attempts initially to find a valid spot
-            p = this.rejectionSample(w, h, 1000, p);
+            let p = { x: Math.random() * w, y: Math.random() * h, psi: 0 };
+            p = this.rejectionSample(w, h, 200, p);
             this.particles.push(p);
         }
     }
@@ -216,7 +262,7 @@ export class HydrogenVisualizer {
         const physScale = 2.0 * maxR / Math.min(w, h);
         const m_abs = Math.abs(m);
 
-        let maxSq = 0;
+        const values = [];
         for (let py = 0; py < h; py++) {
             const z = -(py - h / 2) * physScale;
             for (let px = 0; px < w; px++) {
@@ -234,12 +280,16 @@ export class HydrogenVisualizer {
                     psi = laguerre(n - 1, 1, 0);
                 }
                 const psiSq = psi * psi;
-                if (psiSq > maxSq) {
-                    maxSq = psiSq;
+                if (psiSq > 0.000001) {
+                    values.push(psiSq);
                 }
             }
         }
-        return maxSq > 0 ? maxSq : 1;
+        if (values.length === 0) return 1;
+        values.sort((a, b) => a - b);
+        const p98Index = Math.floor(values.length * 0.98);
+        const p98 = values[p98Index] || values[values.length - 1];
+        return Math.max(p98, 0.0001);
     }
 
     getPsiAt(px, py, n, l, m) {
@@ -373,16 +423,32 @@ export class HydrogenVisualizer {
         }
     }
 
-    render() {
-        const w = this.canvas.width;
-        const h = this.canvas.height;
+    beginExport() {
+        this._isExporting = true;
+    }
 
+    endExport() {
+        this._isExporting = false;
+    }
+
+    async renderFrame(timeSec, targetCanvas = null) {
+        this.updateParticles();
+        const destCanvas = targetCanvas || this.canvas;
+        const destCtx = destCanvas.getContext('2d');
+        this._drawFrame(destCtx, destCanvas.width, destCanvas.height);
+    }
+
+    render() {
+        this._drawFrame(this.ctx, this.canvas.width, this.canvas.height);
+    }
+
+    _drawFrame(ctx, w, h) {
         if (this.config.accumulate) {
             if (this.accumulatedFrames >= this.maxAccumulateFrames) return;
 
             if (this.needsClear) {
-                this.ctx.fillStyle = this.config.bgColor;
-                this.ctx.fillRect(0, 0, w, h);
+                ctx.fillStyle = this.config.bgColor;
+                ctx.fillRect(0, 0, w, h);
                 this.needsClear = false;
             }
             this.accumulatedFrames++;
@@ -391,12 +457,11 @@ export class HydrogenVisualizer {
                 const rgb = hexToRgb(hex);
                 return `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${alpha})`;
             };
-            this.ctx.fillStyle = hexToRgba(this.config.bgColor, 0.15);
-            this.ctx.fillRect(0, 0, w, h);
+            ctx.fillStyle = hexToRgba(this.config.bgColor, 0.15);
+            ctx.fillRect(0, 0, w, h);
         }
 
-        // Rendering raggruppato per fase Positiva e Negativa
-        this.ctx.globalAlpha = this.config.particleAlpha ?? 0.65;
+        ctx.globalAlpha = this.config.particleAlpha ?? 0.65;
         const r = this.config.particleSize;
 
         let posPts = [];
@@ -407,32 +472,36 @@ export class HydrogenVisualizer {
         }
 
         if (posPts.length > 0) {
-            this.ctx.fillStyle = this.config.posColor || '#000000';
-            this.ctx.beginPath();
+            ctx.fillStyle = this.config.posColor || '#000000';
+            ctx.beginPath();
             for (let p of posPts) {
-                this.ctx.moveTo(p.x + r, p.y);
-                this.ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+                ctx.moveTo(p.x + r, p.y);
+                ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
             }
-            this.ctx.fill();
+            ctx.fill();
         }
 
         if (negPts.length > 0) {
-            this.ctx.fillStyle = this.config.negColor || '#FF0000';
-            this.ctx.beginPath();
+            ctx.fillStyle = this.config.negColor || '#FF0000';
+            ctx.beginPath();
             for (let p of negPts) {
-                this.ctx.moveTo(p.x + r, p.y);
-                this.ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+                ctx.moveTo(p.x + r, p.y);
+                ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
             }
-            this.ctx.fill();
+            ctx.fill();
         }
 
-        this.ctx.globalAlpha = 1.0; // Reset
+        ctx.globalAlpha = 1.0;
     }
 
     animate() {
+        if (!this.isPlaying) return;
+        
+        let delta = 16.666;
+        let speedMultiplier = this.speed || 1.0;
         if (this.config.rotateColors) {
-            this.config.posAngle = (this.config.posAngle + this.config.rotationSpeed) % 360;
-            this.config.negAngle = (this.config.negAngle + this.config.rotationSpeed) % 360;
+            this.config.posAngle = (this.config.posAngle + this.config.rotationSpeed * speedMultiplier) % 360;
+            this.config.negAngle = (this.config.negAngle + this.config.rotationSpeed * speedMultiplier) % 360;
             window.dispatchEvent(new CustomEvent('hydrogenAngleUpdate', {
                 detail: { pos: this.config.posAngle, neg: this.config.negAngle }
             }));

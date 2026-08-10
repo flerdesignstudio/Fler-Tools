@@ -65,9 +65,9 @@ export default {
                 </div>
                 
                 <div style="display: flex; gap: 8px; margin-top: 12px;">
-                    <button id="oscPlayBtn" class="notion-btn notion-btn-secondary" style="flex: 1;">
-                        <span class="material-symbols-outlined" style="font-size: 18px;">pause</span>
-                        <span id="oscPlayBtnText">Pause</span>
+                    <button id="oscRestartBtn" class="notion-btn notion-btn-secondary" style="flex: 1;">
+                        <span class="material-symbols-outlined">restart_alt</span>
+                        <span>Restart</span>
                     </button>
                 </div>
             </section>
@@ -276,12 +276,7 @@ export default {
             });
         });
 
-        this._addListener('oscPlayBtn', 'click', () => {
-            v.togglePlay();
-            document.getElementById('oscPlayBtnText').textContent = v.isPlaying ? 'Pause' : 'Play';
-            const iconSpan = document.getElementById('oscPlayBtn').querySelector('.material-symbols-outlined');
-            if (iconSpan) iconSpan.textContent = v.isPlaying ? 'pause' : 'play_arrow';
-        });
+
 
         this._addListener('oscAspectRatioSelect', 'change', (e) => {
             v.setAspectRatio(e.target.value);

@@ -16,6 +16,9 @@ export class AsciiVisualizer {
 
         this.mediaElement = null;
         this.isVideo = false;
+        this.isPlaying = true;
+        this.isLooping = true;
+        this.speed = 1.0;
         this.animationFrameId = null;
         this._objectUrl = null;
 
@@ -51,39 +54,165 @@ export class AsciiVisualizer {
         if (!this.isVideo && this.mediaElement) this._renderFrame();
     }
 
+    play() {
+        this.isPlaying = true;
+        if (this.isVideo && this.mediaElement) {
+            this.mediaElement.play();
+            if (!this.animationFrameId) this._renderLoop();
+        } else if (!this.isVideo && this.mediaElement) {
+            this._renderFrame();
+        }
+    }
+
+    pause() {
+        this.isPlaying = false;
+        if (this.isVideo && this.mediaElement) {
+            this.mediaElement.pause();
+        }
+        if (this.animationFrameId) {
+            cancelAnimationFrame(this.animationFrameId);
+            this.animationFrameId = null;
+        }
+    }
+
+    restart() {
+        if (this.isVideo && this.mediaElement && !this._webcamStream) {
+            this.mediaElement.currentTime = 0;
+            if (this.isPlaying) this.mediaElement.play();
+        } else if (!this.isVideo && this.mediaElement) {
+            this._renderFrame();
+        }
+    }
+
+    setLoop(loop) {
+        this.isLooping = loop;
+        if (this.mediaElement && this.isVideo) {
+            this.mediaElement.loop = loop;
+        }
+    }
+
+    setSpeed(speed) {
+        this.speed = speed;
+        if (this.mediaElement && this.isVideo) {
+            this.mediaElement.playbackRate = speed;
+        }
+    }
+
     loadMedia(file) {
         if (!file) return;
 
+        this.stopWebcam();
         if (this._objectUrl) URL.revokeObjectURL(this._objectUrl);
         const url = URL.createObjectURL(file);
         this._objectUrl = url;
 
         if (this.animationFrameId) cancelAnimationFrame(this.animationFrameId);
 
-        if (file.type.startsWith('video/')) {
+        const isVideo = (file.type && file.type.startsWith('video/')) || /\.(mp4|webm|mov|avi|mkv|m4v|ogv)$/i.test(file.name || '');
+
+        if (isVideo) {
             this.isVideo = true;
             const video = document.createElement('video');
-            video.src = url;
-            video.loop = true;
+            video.loop = this.isLooping;
+            video.playbackRate = this.speed;
             video.muted = true;
-            video.crossOrigin = 'anonymous';
-            video.play();
-            video.addEventListener('play', () => this._renderLoop());
+            video.playsInline = true;
+            video.onloadeddata = () => {
+                if (this.isPlaying) video.play().catch(() => {});
+                if (this.isPlaying && !this.animationFrameId) this._renderLoop();
+            };
+            video.oncanplay = () => {
+                if (this.isPlaying && !this.animationFrameId) this._renderLoop();
+            };
+            video.src = url;
             this.mediaElement = video;
+            if (this.isPlaying) video.play().catch(() => {});
+            video.load();
         } else {
             this.isVideo = false;
             const img = new Image();
-            img.src = url;
             img.onload = () => this._renderFrame();
+            img.src = url;
             this.mediaElement = img;
         }
     }
 
-    _renderLoop() {
-        if (this.mediaElement && !this.mediaElement.paused && !this.mediaElement.ended) {
-            this._renderFrame();
-            this.animationFrameId = requestAnimationFrame(() => this._renderLoop());
+    async startWebcam() {
+        this.stopWebcam();
+        if (this._objectUrl) {
+            URL.revokeObjectURL(this._objectUrl);
+            this._objectUrl = null;
         }
+
+        try {
+            this._webcamStream = await navigator.mediaDevices.getUserMedia({ video: true });
+            this.isVideo = true;
+            const video = document.createElement('video');
+            video.srcObject = this._webcamStream;
+            video.autoplay = true;
+            video.loop = this.isLooping;
+            video.playbackRate = this.speed;
+            video.muted = true;
+            video.playsInline = true;
+            video.onloadeddata = () => {
+                if (this.isPlaying) video.play().catch(() => {});
+                if (this.isPlaying && !this.animationFrameId) this._renderLoop();
+            };
+            this.mediaElement = video;
+            if (this.isPlaying) video.play().catch(() => {});
+        } catch (err) {
+            console.error('Error accessing webcam', err);
+            alert('Could not access webcam. Please check permissions.');
+        }
+    }
+
+    stopWebcam() {
+        if (this._webcamStream) {
+            this._webcamStream.getTracks().forEach(track => track.stop());
+            this._webcamStream = null;
+        }
+    }
+
+    beginExport() {
+        this._isExporting = true;
+        if (this.isVideo && this.mediaElement) {
+            this.mediaElement.pause();
+        }
+    }
+
+    endExport() {
+        this._isExporting = false;
+        if (this.isVideo && this.mediaElement && this.isPlaying) {
+            this.mediaElement.play().catch(() => {});
+        }
+    }
+
+    async renderFrame(timeSec, targetCanvas = null) {
+        if (this.isVideo && this.mediaElement && this.mediaElement.duration) {
+            this.mediaElement.currentTime = timeSec % this.mediaElement.duration;
+            await new Promise(resolve => {
+                const onSeeked = () => {
+                    this.mediaElement.removeEventListener('seeked', onSeeked);
+                    resolve();
+                };
+                this.mediaElement.addEventListener('seeked', onSeeked);
+                setTimeout(resolve, 50);
+            });
+        }
+        this._renderFrame();
+        if (targetCanvas && targetCanvas !== this.canvas) {
+            const ctx = targetCanvas.getContext('2d');
+            ctx.drawImage(this.canvas, 0, 0, targetCanvas.width, targetCanvas.height);
+        }
+    }
+
+    _renderLoop() {
+        if (!this.isPlaying || !this.mediaElement) {
+            this.animationFrameId = null;
+            return;
+        }
+        this._renderFrame();
+        this.animationFrameId = requestAnimationFrame(() => this._renderLoop());
     }
 
     _renderFrame() {
@@ -95,8 +224,8 @@ export class AsciiVisualizer {
             ? [...(customEmoji || ' ')]
             : AsciiVisualizer.CHAR_SETS[charsetKey];
 
-        const sourceWidth = this.isVideo ? this.mediaElement.videoWidth : this.mediaElement.width;
-        const sourceHeight = this.isVideo ? this.mediaElement.videoHeight : this.mediaElement.height;
+        const sourceWidth = this.mediaElement.videoWidth || this.mediaElement.naturalWidth || this.mediaElement.width;
+        const sourceHeight = this.mediaElement.videoHeight || this.mediaElement.naturalHeight || this.mediaElement.height;
         if (!sourceWidth || !sourceHeight) return;
 
         let sampleWidth = gridResolution;
@@ -126,6 +255,12 @@ export class AsciiVisualizer {
         this.offscreenCanvas.width = sampleWidth;
         this.offscreenCanvas.height = sampleHeight;
 
+        if (this._webcamStream) {
+            this.offscreenCtx.save();
+            this.offscreenCtx.translate(sampleWidth, 0);
+            this.offscreenCtx.scale(-1, 1);
+        }
+
         if (aspectMode === 'square' || canvasRes === 1080) {
             const minDim = Math.min(sourceWidth, sourceHeight);
             const sx = (sourceWidth - minDim) / 2;
@@ -133,6 +268,10 @@ export class AsciiVisualizer {
             this.offscreenCtx.drawImage(this.mediaElement, sx, sy, minDim, minDim, 0, 0, sampleWidth, sampleHeight);
         } else {
             this.offscreenCtx.drawImage(this.mediaElement, 0, 0, sampleWidth, sampleHeight);
+        }
+
+        if (this._webcamStream) {
+            this.offscreenCtx.restore();
         }
 
         const imageData = this.offscreenCtx.getImageData(0, 0, sampleWidth, sampleHeight);
@@ -221,11 +360,13 @@ export class AsciiVisualizer {
     }
 
     destroy() {
+        this.stopWebcam();
         if (this.animationFrameId) cancelAnimationFrame(this.animationFrameId);
         if (this._objectUrl) URL.revokeObjectURL(this._objectUrl);
         if (this.isVideo && this.mediaElement) {
             this.mediaElement.pause();
             this.mediaElement.src = '';
+            this.mediaElement.srcObject = null;
         }
         this.mediaElement = null;
     }

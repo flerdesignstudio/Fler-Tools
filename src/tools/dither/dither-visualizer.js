@@ -34,8 +34,21 @@ export class DitherVisualizer {
         this.offscreenCanvas = document.createElement('canvas');
         this.offscreenCtx = this.offscreenCanvas.getContext('2d', { willReadFrequently: true });
 
+        this.videoElement = document.createElement('video');
+        this.videoElement.autoplay = true;
+        this.videoElement.loop = true;
+        this.videoElement.muted = true;
+        this.videoElement.playsInline = true;
+
         this.mediaElement = null;
         this._objectUrl = null;
+        this._webcamStream = null;
+        this._isVideo = false;
+
+        this.isPlaying = true;
+        this.isLooping = true;
+        this.speed = 1.0;
+        this.animationFrameId = null;
 
         this.config = {
             resolution: 400,
@@ -62,7 +75,7 @@ export class DitherVisualizer {
     }
 
     triggerRender() {
-        if (this.mediaElement) {
+        if (this.mediaElement && !this._isVideo) {
             if (this._renderTimeout) {
                 clearTimeout(this._renderTimeout);
             }
@@ -76,16 +89,174 @@ export class DitherVisualizer {
     loadMedia(file) {
         if (!file) return;
 
-        if (this._objectUrl) URL.revokeObjectURL(this._objectUrl);
+        this.stopWebcam();
+
+        if (this._objectUrl) {
+            URL.revokeObjectURL(this._objectUrl);
+            this._objectUrl = null;
+        }
+
         const url = URL.createObjectURL(file);
         this._objectUrl = url;
 
-        const img = new Image();
-        img.src = url;
-        img.onload = () => {
-            this.mediaElement = img;
-            this.triggerRender();
-        };
+        const isVideo = (file.type && file.type.startsWith('video/')) || /\.(mp4|webm|mov|avi|mkv|m4v|ogv)$/i.test(file.name || '');
+
+        if (isVideo) {
+            this._isVideo = true;
+            if (this.animationFrameId) cancelAnimationFrame(this.animationFrameId);
+
+            const video = document.createElement('video');
+            video.loop = this.isLooping;
+            video.playbackRate = this.speed;
+            video.muted = true;
+            video.playsInline = true;
+            video.onloadeddata = () => {
+                if (this.isPlaying) video.play().catch(() => {});
+                if (this.isPlaying && !this.animationFrameId) this._loop();
+            };
+            video.oncanplay = () => {
+                if (this.isPlaying && !this.animationFrameId) this._loop();
+            };
+            video.src = url;
+            this.videoElement = video;
+            this.mediaElement = video;
+            if (this.isPlaying) video.play().catch(() => {});
+            video.load();
+        } else {
+            this._isVideo = false;
+            if (this.videoElement) this.videoElement.pause();
+            const img = new Image();
+            img.onload = () => {
+                this.mediaElement = img;
+                if (this.animationFrameId) cancelAnimationFrame(this.animationFrameId);
+                this.triggerRender();
+            };
+            img.src = url;
+        }
+    }
+
+    async startWebcam() {
+        this.stopWebcam();
+        if (this._objectUrl) {
+            URL.revokeObjectURL(this._objectUrl);
+            this._objectUrl = null;
+        }
+        
+        try {
+            this._webcamStream = await navigator.mediaDevices.getUserMedia({ video: true });
+            this._isVideo = true;
+            if (this.animationFrameId) cancelAnimationFrame(this.animationFrameId);
+
+            const video = document.createElement('video');
+            video.srcObject = this._webcamStream;
+            video.autoplay = true;
+            video.loop = this.isLooping;
+            video.playbackRate = this.speed;
+            video.muted = true;
+            video.playsInline = true;
+            video.onloadeddata = () => {
+                if (this.isPlaying) video.play().catch(() => {});
+                if (this.isPlaying && !this.animationFrameId) this._loop();
+            };
+            this.videoElement = video;
+            this.mediaElement = video;
+            if (this.isPlaying) video.play().catch(() => {});
+        } catch (err) {
+            console.error('Error accessing webcam', err);
+            alert('Could not access webcam. Please check permissions.');
+        }
+    }
+
+    stopWebcam() {
+        if (this._webcamStream) {
+            this._webcamStream.getTracks().forEach(track => track.stop());
+            this._webcamStream = null;
+        }
+        if (this.videoElement && this.videoElement.srcObject) {
+            this.videoElement.srcObject = null;
+        }
+    }
+
+    play() {
+        this.isPlaying = true;
+        if (this._isVideo) {
+            this.videoElement.play().catch(() => {});
+            if (!this.animationFrameId) this._loop();
+        }
+    }
+
+    pause() {
+        this.isPlaying = false;
+        if (this._isVideo) {
+            this.videoElement.pause();
+            if (this.animationFrameId) {
+                cancelAnimationFrame(this.animationFrameId);
+                this.animationFrameId = null;
+            }
+        }
+    }
+
+    restart() {
+        if (this._isVideo && !this._webcamStream) {
+            this.videoElement.currentTime = 0;
+            if (this.isPlaying) this.videoElement.play().catch(() => {});
+        }
+    }
+
+    setLoop(loop) {
+        this.isLooping = loop;
+        if (this.videoElement) {
+            this.videoElement.loop = loop;
+        }
+    }
+
+    setSpeed(speed) {
+        this.speed = speed;
+        if (this.videoElement) {
+            this.videoElement.playbackRate = speed;
+        }
+    }
+
+    beginExport() {
+        this._isExporting = true;
+        if (this._isVideo && this.videoElement) {
+            this.videoElement.pause();
+        }
+    }
+
+    endExport() {
+        this._isExporting = false;
+        if (this._isVideo && this.videoElement && this.isPlaying) {
+            this.videoElement.play().catch(() => {});
+        }
+    }
+
+    async renderFrame(timeSec, targetCanvas = null) {
+        if (this._isVideo && this.videoElement && !this._webcamStream && this.videoElement.duration) {
+            this.videoElement.currentTime = timeSec % this.videoElement.duration;
+            await new Promise(resolve => {
+                const onSeeked = () => {
+                    this.videoElement.removeEventListener('seeked', onSeeked);
+                    resolve();
+                };
+                this.videoElement.addEventListener('seeked', onSeeked);
+                setTimeout(resolve, 50);
+            });
+        }
+        this._renderFrame();
+        if (targetCanvas && targetCanvas !== this.canvas) {
+            const ctx = targetCanvas.getContext('2d');
+            ctx.drawImage(this.canvas, 0, 0, targetCanvas.width, targetCanvas.height);
+        }
+    }
+
+    _loop() {
+        if (!this.isPlaying || !this._isVideo) {
+            this.animationFrameId = null;
+            return;
+        }
+        this._renderFrame();
+        this.animationFrameId = requestAnimationFrame(() => this._loop());
     }
 
     _hexToRgb(hex) {
@@ -134,8 +305,8 @@ export class DitherVisualizer {
     _renderFrame() {
         if (!this.mediaElement) return;
 
-        const sourceWidth = this.mediaElement.width;
-        const sourceHeight = this.mediaElement.height;
+        const sourceWidth = this.mediaElement.videoWidth || this.mediaElement.naturalWidth || this.mediaElement.width;
+        const sourceHeight = this.mediaElement.videoHeight || this.mediaElement.naturalHeight || this.mediaElement.height;
         if (!sourceWidth || !sourceHeight) return;
 
         // Calculate aspect ratio
@@ -143,11 +314,15 @@ export class DitherVisualizer {
         const resWidth = parseInt(this.config.resolution);
         const resHeight = Math.floor(resWidth * aspect);
 
-        // Update canvas sizes
-        this.canvas.width = resWidth;
-        this.canvas.height = resHeight;
-        this.offscreenCanvas.width = resWidth;
-        this.offscreenCanvas.height = resHeight;
+        // Update canvas sizes only when dimensions change
+        if (this.canvas.width !== resWidth || this.canvas.height !== resHeight) {
+            this.canvas.width = resWidth;
+            this.canvas.height = resHeight;
+        }
+        if (this.offscreenCanvas.width !== resWidth || this.offscreenCanvas.height !== resHeight) {
+            this.offscreenCanvas.width = resWidth;
+            this.offscreenCanvas.height = resHeight;
+        }
 
         // Draw image downscaled to offscreen canvas
         if (!this.config.pixelLogoMode) {
@@ -156,7 +331,15 @@ export class DitherVisualizer {
         } else {
             this.offscreenCtx.clearRect(0, 0, resWidth, resHeight);
         }
-        this.offscreenCtx.drawImage(this.mediaElement, 0, 0, resWidth, resHeight);
+        if (this._webcamStream) {
+            this.offscreenCtx.save();
+            this.offscreenCtx.translate(resWidth, 0);
+            this.offscreenCtx.scale(-1, 1);
+            this.offscreenCtx.drawImage(this.mediaElement, 0, 0, resWidth, resHeight);
+            this.offscreenCtx.restore();
+        } else {
+            this.offscreenCtx.drawImage(this.mediaElement, 0, 0, resWidth, resHeight);
+        }
 
         // Get pixel data
         const imageData = this.offscreenCtx.getImageData(0, 0, resWidth, resHeight);
@@ -339,7 +522,20 @@ export class DitherVisualizer {
     }
 
     destroy() {
-        if (this._objectUrl) URL.revokeObjectURL(this._objectUrl);
+        this.stopWebcam();
+        if (this.animationFrameId) {
+            cancelAnimationFrame(this.animationFrameId);
+            this.animationFrameId = null;
+        }
+        if (this._objectUrl) {
+            URL.revokeObjectURL(this._objectUrl);
+            this._objectUrl = null;
+        }
+        if (this.videoElement) {
+            this.videoElement.pause();
+            this.videoElement.src = '';
+            this.videoElement.srcObject = null;
+        }
         this.mediaElement = null;
     }
 }
